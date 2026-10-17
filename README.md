@@ -1,1 +1,131 @@
-# nexus_sync_technologies
+# Nexus Sync
+
+Nexus Sync is a health-monitoring and emergency-coordination platform. Development starts with a dependable Django backend and simulated data. Hardware, provider integrations, and clinical use are separate milestones.
+
+## Project layout
+
+```text
+backend/
+	apps/
+		accounts/            # Authentication, roles, and permissions
+		core/                # Shared infrastructure and service health API
+		devices/             # Device registration and credentials
+		patients/             # Patient profiles, contacts, and consent
+		monitoring/           # Measurements, locations, and safety rules
+		incidents/            # Emergency workflow and incident history
+		emergency_services/   # Verified providers, facilities, and vehicles
+		notifications/        # Delivery, retries, and escalation
+		audit/                # Sensitive access and change history
+	config/
+		settings/             # Shared, development, and production settings
+	manage.py
+	requirements.txt
+frontend/
+	src/
+		components/           # Reusable component, each in its own directory
+		screens/              # React Native screens, each in its own directory
+		navigation/
+		services/             # Backend API clients
+		types/
+```
+
+Each backend domain is a separate Django app. Backend models, serializers, services, API views, and tests belong with the domain that owns them; shared behavior belongs in `apps/core` only when it is genuinely cross-domain.
+
+The frontend will use React Native and TypeScript, not HTML or web CSS. Keep each screen and reusable component in its own file/directory. Give each screen/component its own adjacent `.styles.ts` file using React Native `StyleSheet`; this keeps styles modular while remaining compatible with mobile.
+
+## Backend setup
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+The development settings use SQLite by default so the API can be started locally without external services. To use PostgreSQL, set `DB_ENGINE=postgresql` and configure the `DB_*` values in `backend/.env`. Never commit `.env` or real credentials.
+
+Create user accounts and assign their `AccountProfile` roles through trusted admin provisioning. There is no public user-registration endpoint.
+
+Register a device in Django admin, assign it to a patient, and set it to active before issuing credentials. The credential is printed once and stored on the server only as a digest:
+
+```bash
+python manage.py issue_device_credential NS-DEVICE-001
+python manage.py issue_device_credential NS-DEVICE-001 --revoke
+```
+
+## SasuSync SMS setup
+
+After the account and sender ID are approved, configure these values in the untracked `backend/.env` file:
+
+- `SASUSYNC_API_KEY`
+- `SASUSYNC_SENDER_ID` (must be approved on the SasuSync account)
+- `SASUSYNC_BASE_URL` (defaults to `https://sms.sasusync.com`)
+- `SASUSYNC_WEBHOOK_SECRET` (the signing secret issued when enabling a webhook for the API key)
+
+In the SasuSync API-key settings, configure the webhook URL as `https://YOUR_PUBLIC_API_HOST/api/v1/integrations/sasusync/webhook/`. The endpoint validates `X-Webhook-Signature` over the raw request body, ignores duplicate events, and applies only events newer than the most recently recorded provider timestamp.
+
+`python manage.py process_notifications --sandbox --limit 50` uses SasuSync's free sandbox endpoint; it requires the API key and an approved sender ID, but it does not deliver messages. Sandbox submissions are stored separately and never count as real delivery. `python manage.py process_notifications --sasusync --limit 50` sends real SMS and can incur charges. A send response records the provider task ID and `submitted` status. Signed webhooks update delivery status; `python manage.py reconcile_sasusync_status --limit 50` polls submitted live task IDs if a webhook is missed. Transient HTTP errors use bounded backoff. Network timeouts are held as ambiguous and are never blindly resent. Do not run live sending against test patient data.
+
+## Current API
+
+Application endpoints require authentication except health and token login. The SasuSync webhook uses its raw-body HMAC signature. Patient and incident data are restricted by account role and patient association.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/v1/auth/token/` | Obtain a user token |
+| `GET` | `/api/v1/health/` | JSON service health |
+| `POST` | `/api/v1/devices/heartbeat/` | Update device health using device credentials |
+| `GET`, `POST` | `/api/v1/patients/` | List or create patients |
+| `GET`, `PATCH`, `PUT` | `/api/v1/patients/{id}/` | Read or update a patient |
+| `GET` | `/api/v1/providers/` | List verified emergency providers for operations staff |
+| `GET` | `/api/v1/facilities/` | List verified healthcare facilities for operations staff |
+| `GET` | `/api/v1/vehicles/` | List vehicles belonging to verified providers |
+| `GET` | `/api/v1/vehicles/nearby/?latitude={lat}&longitude={lon}` | List fresh, available live vehicles nearest to a location |
+| `POST` | `/api/v1/measurements/` | Ingest one sourced measurement |
+| `POST` | `/api/v1/locations/` | Ingest one timestamped location |
+| `POST` | `/api/v1/incidents/sos/` | Create an idempotent SOS incident |
+| `GET` | `/api/v1/incidents/` | List visible incidents |
+| `POST` | `/api/v1/incidents/{id}/acknowledge/` | Acknowledge as authorized staff |
+| `POST` | `/api/v1/incidents/{id}/assign-responder/` | Assign an eligible vehicle; simulated vehicles require explicit opt-in |
+| `POST` | `/api/v1/incidents/{id}/route/` | Calculate and save a traffic-aware route/ETA for the assigned vehicle |
+| `POST` | `/api/v1/incidents/{id}/record-dispatch-request/` | Record an operator request; does not contact a provider |
+| `POST` | `/api/v1/incidents/{id}/record-dispatch-confirmation/` | Record operator-reported confirmation and reference |
+| `POST` | `/api/v1/incidents/{id}/status/` | Record allowed en-route, arrival, resolution, or closure transitions |
+| `GET` | `/api/v1/incidents/{id}/notifications/` | View contact notification status as staff |
+| `GET` | `/api/v1/incidents/{id}/events/` | View audit timeline and monitoring-rule evidence as staff |
+| `POST` | `/api/v1/integrations/sasusync/webhook/` | Signed SasuSync delivery callback |
+
+## Google Routes setup
+
+Enable Google Routes API and billing for the Google Cloud project, restrict the key to the Routes API and your backend environment, then set `GOOGLE_MAPS_API_KEY` in the untracked `backend/.env`. Route calculation requires an assigned vehicle and fresh patient/vehicle coordinates; it refuses stale locations and returns a configuration error if the key is absent. Each calculation is retained as an incident route estimate. Simulated routes carry `is_simulated=true` and are not evidence of an actual ambulance route or dispatch.
+
+## Monitoring rules
+
+Monitoring rules are configured in Django admin. No clinical thresholds are seeded. Rules are disabled by default and can be enabled only by a clinician or superuser, which records the reviewer and review time. Measurements begin as `unreviewed`; a clinician must review them in Django admin and mark a reading `acceptable` before it can trigger a rule. Readings older than five minutes are skipped, and simulated readings require explicit opt-in on the rule. Consecutive-reading count and lookback window are configurable. Evaluated rule definitions are immutable; create a new version to change an evaluated rule. Each evaluation records its rule version and reading evidence; repeat triggers link to the active incident rather than creating an incident for every reading. Authorized staff can inspect history at `/api/v1/incidents/{id}/events/`. These rules are alerts, not diagnoses.
+
+## Audit logs
+
+Authorized admins can review patient and incident access, object-level denied access attempts, patient changes, SOS creation/retries, and measurement/location ingestion in Django admin under Audit logs. Entries record the actor when authenticated, action, resource identifier, request method, request ID, client IP, and outcome. Audit metadata intentionally excludes patient names, medical notes, coordinates, measurement values, message bodies, and credentials. Incident timeline events remain separately available at `/api/v1/incidents/{id}/events/`.
+
+Device-originated monitoring data requires an active, patient-assigned device credential. The backend derives the patient, device, and source from that credential rather than trusting those fields in the request. Credentials can be rotated by issuing again and revoked with `--revoke`. Simulator, manual, and validated-external sources remain explicit in stored measurement records. SOS creates queued notification records only for verified contacts when the latest emergency-contact consent is granted.
+
+Seed the local UPSA demo fleet with `python manage.py seed_upsa_simulation`. The seeded provider and vehicle are marked simulation-only; simulated vehicles appear in nearby results only when `include_simulated=true` is explicitly requested. Their positions are not real ambulance locations and do not establish dispatch availability.
+
+To exercise the outbox against SasuSync without delivering a real message, configure the approved API key and sender ID, then run `python manage.py process_notifications --sandbox`.
+
+Run backend checks and tests from `backend/`:
+
+```bash
+python manage.py check
+python manage.py test apps.core apps.accounts apps.patients apps.devices apps.incidents apps.monitoring apps.notifications apps.emergency_services
+```
+
+The API returns JSON only. The domain apps are being built incrementally, with backend behavior and tests before the React Native application.
+
+## Safety and pilot boundary
+
+Initial development uses simulator-generated data. A successful API response, alert, or provider listing is not evidence that an emergency contact received a message or that an ambulance was dispatched. Live health data, patient enrollment, clinical decision support, and real dispatch require appropriate consent, security controls, provider authorization, and supervised validation.
