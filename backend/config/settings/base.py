@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -68,7 +69,27 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-if os.getenv("DB_ENGINE", "sqlite").lower() == "postgresql":
+database_url = os.getenv("DATABASE_URL", "")
+if database_url:
+    parsed_database_url = urlparse(database_url)
+    if parsed_database_url.scheme not in {"postgres", "postgresql"}:
+        raise ValueError("DATABASE_URL must use the postgres:// or postgresql:// scheme.")
+    database_options = {}
+    if "sslmode" in parse_qs(parsed_database_url.query):
+        database_options["sslmode"] = parse_qs(parsed_database_url.query)["sslmode"][-1]
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(parsed_database_url.path.lstrip("/")),
+            "USER": unquote(parsed_database_url.username or ""),
+            "PASSWORD": unquote(parsed_database_url.password or ""),
+            "HOST": parsed_database_url.hostname or "",
+            "PORT": str(parsed_database_url.port or "5432"),
+            "CONN_MAX_AGE": 60,
+            "OPTIONS": database_options,
+        }
+    }
+elif os.getenv("DB_ENGINE", "sqlite").lower() == "postgresql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",

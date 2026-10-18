@@ -65,13 +65,13 @@ Create user accounts and assign their `AccountProfile` roles through trusted adm
 
 ## Deployment on Render and Vercel
 
-Backend production runs from `backend/config/wsgi.py`, which defaults to the production settings module. A Render blueprint is available at `render.yaml` for the backend service and links its database environment variables to the existing Render Postgres resource named `nexus_sync_db`.
+Backend production runs from `backend/config/wsgi.py`, which defaults to the production settings module. A Render blueprint is available at `render.yaml` for the backend service and links `DATABASE_URL` to the existing Render Postgres resource named `nexus_sync_db`.
 
 Use these Render settings for the Django web service:
 
 - build command: `pip install -r backend/requirements.txt && cd backend && python manage.py collectstatic --noinput --settings=config.settings.base`
 - start command: `cd backend && python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
-- environment variables: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DB_ENGINE=postgresql`, and the `DB_*` values for Render Postgres
+- environment variables: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DB_ENGINE=postgresql`, and `DATABASE_URL` linked to Render Postgres
 - optional frontend origin allowlist: `CORS_ALLOWED_ORIGINS=https://YOUR_FRONTEND_DOMAIN`
 
 For the Vercel frontend, set the project's Root Directory to `frontend`, because the latest build log showed Vercel looking for `/frontend/package.json`. The Vercel config there installs and builds from `admin/`. Set `VITE_API_BASE_URL` to the deployed backend base URL, for example `https://YOUR_RENDER_BACKEND/api/v1`. If you do not set it, the app will use a same-origin `/api/v1` path, which only works when the frontend is served from the same host or through a proxy.
