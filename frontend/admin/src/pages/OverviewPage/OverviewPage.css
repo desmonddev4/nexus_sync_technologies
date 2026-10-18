@@ -1,12 +1,353 @@
-.overview-page { display: grid; gap: 25px; }
+/* ==========================================================================
+   OverviewPage.css
+   Nexus Sync Technologies — operations overview
+
+   Contents
+   01. Tokens
+   02. Page shell
+   03. Header
+   04. Attention banner
+   05. Metrics
+   06. Main grid & panels
+   07. Incident queue (table additions)
+   08. Breakdown cards
+   09. Loading skeletons
+   10. Shared classes (also used by other pages — unchanged)
+   11. Keyframes
+   12. Responsive
+   13. Reduced motion
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   01. Tokens (brand colors from the NST logo; falls back to app variables)
+   -------------------------------------------------------------------------- */
+.overview-page {
+  --ov-cyan: #3fd8ff;
+  --ov-blue: #2457f5;
+  --ov-violet: #8a44f0;
+  --ov-gradient: linear-gradient(120deg, var(--ov-cyan), var(--ov-blue) 50%, var(--ov-violet));
+
+  --ov-ink: var(--ink, #0e1433);
+  --ov-muted: var(--muted, #6a7396);
+  --ov-line: rgba(36, 87, 245, 0.14);
+  --ov-panel: rgba(255, 255, 255, 0.72);
+  --ov-radius: 16px;
+  --ov-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --------------------------------------------------------------------------
+   02. Page shell
+   -------------------------------------------------------------------------- */
+.overview-page {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 20px;
+}
+
+/* Soft brand glow behind the content so the glass panels have something to blur */
+.overview-page::before {
+  position: absolute;
+  top: -40px;
+  right: -60px;
+  left: -60px;
+  z-index: -1;
+  height: 360px;
+  background:
+    radial-gradient(420px 220px at 12% 20%, rgba(63, 216, 255, 0.22), transparent 70%),
+    radial-gradient(420px 240px at 55% 0%, rgba(36, 87, 245, 0.16), transparent 70%),
+    radial-gradient(420px 220px at 92% 25%, rgba(138, 68, 240, 0.18), transparent 70%);
+  content: '';
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   03. Header
+   -------------------------------------------------------------------------- */
+.ov-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  animation: ov-rise 0.6s var(--ov-ease) both;
+}
+
+.ov-head h1 {
+  margin: 0;
+  color: var(--ov-ink);
+  font: 700 clamp(24px, 3vw, 30px) / 1.1 var(--display, system-ui, sans-serif);
+  letter-spacing: -0.02em;
+}
+
+.ov-head p {
+  margin: 7px 0 0;
+  color: var(--ov-muted);
+  font-size: 13px;
+}
+
+.ov-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ov-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: #1b6b52;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgba(56, 168, 121, 0.12);
+  border: 1px solid rgba(56, 168, 121, 0.28);
+  border-radius: 999px;
+}
+
+.ov-live i {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  background: #2fb582;
+  border-radius: 50%;
+}
+
+.ov-live i::after {
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  border-radius: inherit;
+  content: '';
+  animation: ov-ping 1.8s ease-out infinite;
+}
+
+.ov-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--ov-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--ov-panel);
+  border: 1px solid var(--ov-line);
+  border-radius: 999px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, transform 0.2s var(--ov-ease);
+}
+
+.ov-refresh:hover:not(:disabled) {
+  color: var(--ov-blue);
+  border-color: rgba(36, 87, 245, 0.4);
+  transform: translateY(-1px);
+}
+
+.ov-refresh:disabled { cursor: progress; }
+.ov-refresh .is-spinning { animation: ov-spin 0.9s linear infinite; }
+
+/* --------------------------------------------------------------------------
+   04. Attention banner
+   -------------------------------------------------------------------------- */
+.ov-attention {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  overflow: hidden;
+  color: #8a2f2a;
+  font-size: 13px;
+  text-decoration: none;
+  background: linear-gradient(100deg, rgba(255, 107, 107, 0.16), rgba(255, 170, 90, 0.12));
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 14px;
+  animation: ov-rise 0.5s var(--ov-ease) both;
+  transition: transform 0.25s var(--ov-ease), box-shadow 0.25s;
+}
+
+.ov-attention:hover {
+  box-shadow: 0 10px 28px rgba(255, 107, 107, 0.2);
+  transform: translateY(-1px);
+}
+
+.ov-attention svg:first-child { animation: ov-ring 2.6s ease-in-out infinite; transform-origin: top center; }
+.ov-attention strong { font-weight: 800; }
+
+.ov-attention em {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   05. Metrics
+   -------------------------------------------------------------------------- */
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.overview-metrics > * {
+  animation: ov-rise 0.6s var(--ov-ease) both;
+  transition: transform 0.3s var(--ov-ease), box-shadow 0.3s;
+}
+
+.overview-metrics > *:nth-child(1) { animation-delay: 0.05s; }
+.overview-metrics > *:nth-child(2) { animation-delay: 0.12s; }
+.overview-metrics > *:nth-child(3) { animation-delay: 0.19s; }
+.overview-metrics > *:nth-child(4) { animation-delay: 0.26s; }
+
+.overview-metrics > *:hover {
+  box-shadow: 0 14px 34px rgba(36, 87, 245, 0.14);
+  transform: translateY(-3px);
+}
+
+/* --------------------------------------------------------------------------
+   06. Main grid & panels
+   -------------------------------------------------------------------------- */
+.ov-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.ov-panel {
+  min-width: 0;
+  padding: 18px;
+  background: var(--ov-panel);
+  border: 1px solid var(--ov-line);
+  border-radius: var(--ov-radius);
+  box-shadow: 0 10px 30px rgba(14, 20, 51, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  animation: ov-rise 0.6s var(--ov-ease) 0.3s both;
+}
+
+.ov-muted {
+  margin: 4px 0 0;
+  color: var(--ov-muted);
+  font-size: 12px;
+}
+
+.ov-aside {
+  display: grid;
+  gap: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   07. Incident queue (additions on top of the shared table styles)
+   -------------------------------------------------------------------------- */
+.ov-queue .data-table tbody tr {
+  transition: background 0.2s;
+}
+
+.ov-queue .data-table tbody tr:hover {
+  background: rgba(36, 87, 245, 0.05);
+}
+
+/* New / unacknowledged incidents get a brand-colored edge */
+.ov-queue .ov-row--new td:first-child {
+  box-shadow: inset 3px 0 0 #ff6b6b;
+}
+
+.ov-queue .row-open {
+  transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.25s var(--ov-ease);
+}
+
+.ov-queue .data-table tbody tr:hover .row-open {
+  color: #fff;
+  background: var(--ov-blue);
+  border-color: var(--ov-blue);
+  transform: translate(2px, -2px);
+}
+
+.ov-more {
+  margin: 14px 0 0;
+  color: var(--ov-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   08. Breakdown cards
+   -------------------------------------------------------------------------- */
+.ov-breakdown h3 {
+  margin: 0 0 14px;
+  color: var(--ov-ink);
+  font: 700 14px var(--display, system-ui, sans-serif);
+}
+
+.ov-breakdown ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ov-breakdown-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--ov-ink);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.ov-breakdown-row strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.ov-bar {
+  height: 6px;
+  overflow: hidden;
+  background: rgba(36, 87, 245, 0.1);
+  border-radius: 999px;
+}
+
+.ov-bar span {
+  display: block;
+  height: 100%;
+  background: var(--ov-gradient);
+  border-radius: inherit;
+  transform-origin: left;
+  animation: ov-grow 0.9s var(--ov-ease) both;
+}
+
+/* --------------------------------------------------------------------------
+   09. Loading skeletons
+   -------------------------------------------------------------------------- */
+.ov-skeleton-stack { display: grid; gap: 12px; }
+
+.ov-skeleton-stack i {
+  display: block;
+  height: 14px;
+  background: linear-gradient(90deg, rgba(36, 87, 245, 0.07) 25%, rgba(63, 216, 255, 0.2) 50%, rgba(36, 87, 245, 0.07) 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: ov-shimmer 1.4s linear infinite;
+}
+
+.ov-skeleton-stack--rows i { height: 44px; border-radius: 10px; }
+
+/* --------------------------------------------------------------------------
+   10. Shared classes — used by other pages too, kept exactly as before
+   -------------------------------------------------------------------------- */
 .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .page-eyebrow { margin: 0 0 8px; color: var(--muted); font: 500 9px var(--mono); letter-spacing: .08em; }
 .page-heading h1 { margin: 0; color: var(--ink); font: 600 28px var(--display); }
 .page-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-.overview-live { display: inline-flex; align-items: center; gap: 7px; padding: 7px 9px; color: #336c59; background: var(--mint); border-radius: 4px; font: 500 9px var(--mono); white-space: nowrap; }
-.overview-live i { width: 6px; height: 6px; background: #38a879; border-radius: 50%; }
-.overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.overview-section { min-width: 0; padding: 18px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .section-heading h2 { margin: 0; color: var(--ink); font: 600 17px var(--display); }
 .text-link { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-size: 11px; font-weight: 600; text-decoration: none; }
@@ -21,8 +362,81 @@
 .row-open { display: inline-grid; width: 28px; height: 28px; place-items: center; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; }
 .loading-row, .page-error { padding: 16px; color: var(--muted); font-size: 12px; }
 .page-error { color: #8e352b; background: var(--coral-soft); border-radius: 4px; }
-@media (max-width: 1000px) { .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .page-heading { flex-direction: column; } .overview-metrics { grid-template-columns: 1fr 1fr; gap: 8px; } .overview-section { padding: 12px; } }
+
+/* --------------------------------------------------------------------------
+   11. Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes ov-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ov-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes ov-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ov-ping {
+  0%   { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(3.2); }
+}
+
+@keyframes ov-ring {
+  0%, 70%, 100% { transform: rotate(0); }
+  75% { transform: rotate(14deg); }
+  80% { transform: rotate(-12deg); }
+  85% { transform: rotate(8deg); }
+  90% { transform: rotate(-6deg); }
+}
+
+@keyframes ov-shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* --------------------------------------------------------------------------
+   12. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 1180px) {
+  .ov-grid { grid-template-columns: 1fr; }
+  .ov-aside { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1000px) {
+  .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-aside { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 720px) {
+  .ov-head { flex-direction: column; align-items: flex-start; }
+  .ov-head-actions { flex-wrap: wrap; }
+  .ov-aside { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .page-heading { flex-direction: column; }
+  .overview-metrics { gap: 8px; }
+  .ov-panel { padding: 12px; }
+}
+
 @media (max-width: 480px) {
-	.overview-metrics { grid-template-columns: 1fr; }
+  .overview-metrics { grid-template-columns: 1fr; }
+  .ov-attention { flex-wrap: wrap; }
+  .ov-attention em { margin-left: 30px; }
+}
+
+/* --------------------------------------------------------------------------
+   13. Reduced motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .overview-page *,
+  .overview-page *::before,
+  .overview-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

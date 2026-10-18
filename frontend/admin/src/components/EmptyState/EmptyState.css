@@ -1,4 +1,80 @@
-.empty-state { display: grid; justify-items: center; gap: 9px; padding: 46px 20px; color: var(--muted); text-align: center; }
-.empty-state__icon { display: grid; width: 44px; height: 44px; place-items: center; color: var(--forest); background: #e7ede8; border-radius: 50%; }
-.empty-state strong { color: var(--ink); font-size: 14px; }
-.empty-state p { max-width: 360px; margin: 0; font-size: 12px; line-height: 1.6; }
+/* ==========================================================================
+   EmptyState.css — floating icon orb with soft expanding rings
+   ========================================================================== */
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding: 44px 20px;
+  color: var(--muted, #667099);
+  text-align: center;
+  animation: empty-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.empty-state__orb {
+  position: relative;
+  display: grid;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 6px;
+  place-items: center;
+}
+
+.empty-state__icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #3fd8ff, #2457f5 55%, #8a44f0);
+  border-radius: 50%;
+  box-shadow: 0 10px 26px rgba(36, 87, 245, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: empty-float 4.5s ease-in-out infinite;
+}
+
+.empty-state__ring {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(47, 123, 255, 0.4);
+  border-radius: 50%;
+  animation: empty-ring 3.6s ease-out infinite;
+}
+
+.empty-state__ring--b { animation-delay: 1.8s; }
+
+.empty-state strong {
+  color: var(--ink, #0e1433);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.empty-state p {
+  max-width: 360px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+@keyframes empty-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes empty-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+@keyframes empty-ring {
+  from { opacity: 0.8; transform: scale(0.8); }
+  to   { opacity: 0; transform: scale(1.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state,
+  .empty-state__icon,
+  .empty-state__ring { animation: none; }
+}

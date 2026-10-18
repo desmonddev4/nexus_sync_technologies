@@ -28,14 +28,24 @@ const labels: Record<string, string> = {
   inactive: 'Inactive',
 }
 
+type Tone = 'default' | 'danger' | 'success' | 'warning' | 'info'
+
 interface StatusBadgeProps {
   value: string
-  tone?: 'default' | 'danger' | 'success' | 'warning' | 'info'
+  tone?: Tone
 }
+
+// Tones that mean "something is happening or needs a look" get a pulsing dot.
+const livetones = new Set<Tone>(['danger', 'warning', 'info'])
 
 export function StatusBadge({ value, tone }: StatusBadgeProps) {
   const inferredTone = tone || getTone(value)
-  return <span className={`status-badge status-badge--${inferredTone}`}>{labels[value] || value.replaceAll('_', ' ')}</span>
+  const live = livetones.has(inferredTone) && !['failed', 'cancelled', 'declined', 'inactive', 'unverified'].includes(value)
+  return (
+    <span className={`status-badge status-badge--${inferredTone}${live ? ' is-live' : ''}`}>
+      {labels[value] || value.replaceAll('_', ' ')}
+    </span>
+  )
 }
 
 function getTone(value: string): NonNullable<StatusBadgeProps['tone']> {

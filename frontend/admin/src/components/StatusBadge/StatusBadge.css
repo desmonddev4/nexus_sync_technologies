@@ -1,21 +1,70 @@
+/* ==========================================================================
+   StatusBadge.css — tinted glass pill with a status dot
+   ========================================================================== */
+
+.status-badge--default { --b: #5b6690; --b-rgb: 91, 102, 144; }
+.status-badge--danger  { --b: #d6364f; --b-rgb: 214, 54, 79; }
+.status-badge--success { --b: #12875f; --b-rgb: 18, 135, 95; }
+.status-badge--warning { --b: #b7710c; --b-rgb: 217, 138, 20; }
+.status-badge--info    { --b: #1f5fd6; --b-rgb: 47, 123, 255; }
+
 .status-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 23px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  font-size: 11px;
+  gap: 7px;
+  min-height: 26px;
+  padding: 3px 11px 3px 9px;
+  color: var(--b);
+  font-size: 11.5px;
   font-weight: 700;
   line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   white-space: nowrap;
+  background: linear-gradient(135deg, rgba(var(--b-rgb), 0.16), rgba(var(--b-rgb), 0.07));
+  border: 1px solid rgba(var(--b-rgb), 0.28);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
 }
 
-.status-badge::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ''; }
-.status-badge--default { color: #58645f; background: #e8ece8; }
-.status-badge--danger { color: #a4352a; background: var(--coral-soft); }
-.status-badge--success { color: #16634f; background: var(--mint); }
-.status-badge--warning { color: #88540f; background: var(--amber-soft); }
-.status-badge--info { color: #315e79; background: var(--blue-soft); }
+.status-badge:hover {
+  box-shadow: 0 6px 16px rgba(var(--b-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px) scale(1.03);
+}
+
+.status-badge::before {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
+}
+
+/* Pulse ring for statuses that are live or need attention */
+.status-badge.is-live::after {
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0.55);
+  content: '';
+  animation: status-pulse 1.9s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes status-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(var(--b-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-badge.is-live::after { animation: none; }
+  .status-badge { transition-duration: 0.01ms; }
+}
