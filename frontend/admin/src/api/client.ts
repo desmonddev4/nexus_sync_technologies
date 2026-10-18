@@ -1,4 +1,7 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+const DEFAULT_API_BASE_URL = import.meta.env.PROD
+  ? 'https://nexus-sync-backend.onrender.com/api/v1'
+  : '/api/v1'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
 const AUTH_STORAGE_KEY = 'nexus-sync-operations-token'
 let authToken = readStoredToken()
 
