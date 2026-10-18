@@ -1,0 +1,16 @@
+.metric-tile {
+  min-height: 132px;
+  padding: 17px 18px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--tone);
+}
+
+.metric-tile--coral { --tone: var(--coral); --soft: var(--coral-soft); }
+.metric-tile--green { --tone: var(--green); --soft: var(--mint); }
+.metric-tile--amber { --tone: var(--amber); --soft: var(--amber-soft); }
+.metric-tile--blue { --tone: var(--blue); --soft: var(--blue-soft); }
+.metric-tile__top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+.metric-tile__top svg { color: var(--tone); }
+.metric-tile strong { display: block; margin-top: 14px; color: var(--ink); font: 600 32px/1 var(--display); }
+.metric-tile small { display: block; margin-top: 9px; color: var(--muted); font-size: 11px; }
