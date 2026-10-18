@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd frontend/admin && npm run build",
+  "outputDirectory": "frontend/admin/dist",
+  "installCommand": "cd frontend/admin && npm install",
+  "framework": null
+}
