@@ -1,0 +1,43 @@
+databases:
+  - name: nexus-sync-db
+    plan: free
+    databaseName: nexus_sync
+    user: nexus_sync
+
+services:
+  - type: web
+    name: nexus-sync-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt && cd backend && python manage.py collectstatic --noinput
+    preDeployCommand: cd backend && python manage.py migrate --noinput
+    startCommand: cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: .onrender.com
+      - key: DB_ENGINE
+        value: postgresql
+      - key: DB_NAME
+        fromDatabase:
+          name: nexus-sync-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: nexus-sync-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: nexus-sync-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: nexus-sync-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: nexus-sync-db
+          property: port

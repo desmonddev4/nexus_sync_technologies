@@ -21,6 +21,7 @@ class EmergencyDirectoryTests(TestCase):
             name="Pilot Ambulance Provider",
             provider_type=EmergencyProvider.Type.PRIVATE_AMBULANCE,
             verification_status=EmergencyProvider.VerificationStatus.VERIFIED,
+            fleet_feed_authorized=True,
         )
         self.now = timezone.now()
 

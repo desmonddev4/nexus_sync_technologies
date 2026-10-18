@@ -47,3 +47,8 @@
 .incident-detail-loading { padding: 25px; color: var(--muted); font: 11px var(--mono); }
 @media (max-width: 900px) { .incident-detail-grid { grid-template-columns: 1fr; } .incident-timeline { position: static; } }
 @media (max-width: 600px) { .incident-detail-heading { flex-direction: column; } .detail-panel { padding: 12px; } }
+@media (max-width: 600px) {
+	.confirmation-form input { width: 100%; }
+	.vehicle-option { align-items: flex-start; flex-direction: column; }
+	.notification-row { align-items: flex-start; flex-direction: column; }
+}

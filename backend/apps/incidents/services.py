@@ -173,8 +173,13 @@ def assign_responder(*, incident, vehicle, actor, include_simulated=False):
             raise InvalidResponderAssignment("Explicitly opt in to assign a simulated vehicle.")
         if vehicle.provider.verification_status != EmergencyProvider.VerificationStatus.SIMULATED:
             raise InvalidResponderAssignment("Simulated vehicles require a simulation-only provider.")
-    elif vehicle.provider.verification_status != EmergencyProvider.VerificationStatus.VERIFIED:
-        raise InvalidResponderAssignment("The vehicle provider is not verified.")
+    else:
+        if vehicle.provider.verification_status != EmergencyProvider.VerificationStatus.VERIFIED:
+            raise InvalidResponderAssignment("The vehicle provider is not verified.")
+        if not vehicle.provider.fleet_feed_authorized:
+            raise InvalidResponderAssignment(
+                "The provider feed is not authorized for live operational dispatch."
+            )
 
     previous_vehicle = incident.assigned_vehicle
     if previous_vehicle and previous_vehicle.pk != vehicle.pk:

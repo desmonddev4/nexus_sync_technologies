@@ -21,4 +21,9 @@
 .row-open { display: inline-grid; width: 28px; height: 28px; place-items: center; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; }
 .page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
 .loading-row { padding: 18px; color: var(--muted); font-size: 12px; }
-@media (max-width: 720px) { .incident-controls { align-items: stretch; flex-direction: column; } .incident-search { min-height: 34px; } }
+@media (max-width: 720px) {
+	.incident-controls { align-items: stretch; flex-direction: column; }
+	.incident-search { min-height: 34px; }
+	.incident-filter { width: 100%; }
+	.incident-filter button { flex: 1; }
+}

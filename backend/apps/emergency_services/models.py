@@ -29,6 +29,10 @@ class EmergencyProvider(UUIDTimestampedModel):
         choices=VerificationStatus.choices,
         default=VerificationStatus.UNVERIFIED,
     )
+    api_integration_authorized = models.BooleanField(default=False)
+    fleet_feed_authorized = models.BooleanField(default=False)
+    integration_authorization_reference = models.CharField(max_length=200, blank=True)
+    integration_authorized_at = models.DateTimeField(null=True, blank=True)
     verification_source = models.CharField(max_length=300, blank=True)
     verified_by = models.CharField(max_length=160, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)

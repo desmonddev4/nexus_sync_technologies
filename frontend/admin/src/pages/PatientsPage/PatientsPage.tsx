@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Search, UserRound } from 'lucide-react'
+import { ArrowUpRight, Search, UserRound } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { getPatients } from '../../api/operations'
 import type { Patient } from '../../types/api'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -26,9 +27,10 @@ export function PatientsPage() {
       {loading ? <div className="loading-row">Loading patient records…</div> : visible.length === 0 ? <EmptyState icon={UserRound} title="No patient records" detail="No records match the current search." /> : (
         <div className="patient-list">{visible.map((patient) => <article className="patient-row" key={patient.id}>
           <span className="patient-avatar"><UserRound size={17} /></span>
-          <div className="patient-main"><strong>{patient.full_name}</strong><small>Patient ID · {patient.id.slice(0, 8)}</small></div>
+          <div className="patient-main"><strong><Link className="patient-link" to={`/patients/${patient.id}`}>{patient.full_name}</Link></strong><small>Patient ID · {patient.id.slice(0, 8)}</small></div>
           <div className="patient-contact"><span>{patient.phone_number || 'No phone on record'}</span><small>{patient.date_of_birth ? `DOB ${patient.date_of_birth}` : 'DOB not recorded'}</small></div>
           <StatusBadge value={patient.status} />
+          <Link className="row-open" to={`/patients/${patient.id}`} aria-label="Open patient"><ArrowUpRight size={15} /></Link>
         </article>)}</div>
       )}
     </div>

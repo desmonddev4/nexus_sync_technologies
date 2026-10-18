@@ -2,12 +2,14 @@ import hashlib
 import hmac
 import json
 import uuid
+from datetime import timedelta
 from io import StringIO
 from unittest.mock import Mock, patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 import requests
 
@@ -24,8 +26,11 @@ from apps.notifications.providers import (
 from apps.notifications.services import (
     apply_sasusync_status,
     claim_notification,
+    queue_due_notification_retries,
     reconcile_sasusync_status_snapshot,
     record_submission,
+    recover_stuck_processing_notifications,
+    schedule_retry_attempt,
     transition_notification,
 )
 from apps.patients.models import Patient
@@ -92,6 +97,48 @@ class NotificationTransitionTests(TestCase):
                 notification=self.notification,
                 new_status=IncidentNotification.Status.DELIVERED,
             )
+
+    def test_stuck_processing_is_recovered_to_submission_unknown_and_scheduled(self):
+        processing = claim_notification(
+            notification_id=self.notification.pk,
+            provider_name="test-provider",
+        )
+        processing.processing_started_at = timezone.now() - timedelta(minutes=30)
+        processing.save(update_fields=("processing_started_at", "updated_at"))
+
+        recovered_count = recover_stuck_processing_notifications(limit=10)
+
+        self.assertEqual(recovered_count, 1)
+        processing.refresh_from_db()
+        self.assertEqual(processing.status, IncidentNotification.Status.SUBMISSION_UNKNOWN)
+        self.assertEqual(processing.failure_code, "processing_timeout")
+        self.assertIsNotNone(processing.next_attempt_at)
+
+    def test_due_submission_unknown_is_requeued_for_retry(self):
+        processing = claim_notification(
+            notification_id=self.notification.pk,
+            provider_name="test-provider",
+        )
+        unknown = transition_notification(
+            notification=processing,
+            new_status=IncidentNotification.Status.SUBMISSION_UNKNOWN,
+            failure_code="submission_outcome_unknown",
+        )
+        scheduled = schedule_retry_attempt(
+            notification=unknown,
+            reason="submission_outcome_unknown",
+        )
+        scheduled.next_attempt_at = timezone.now() - timedelta(minutes=1)
+        scheduled.save(update_fields=("next_attempt_at", "updated_at"))
+
+        queued_count, exhausted = queue_due_notification_retries(limit=10)
+
+        self.assertEqual(queued_count, 1)
+        self.assertEqual(exhausted, 0)
+        scheduled.refresh_from_db()
+        self.assertEqual(scheduled.status, IncidentNotification.Status.QUEUED)
+        self.assertEqual(scheduled.retry_count, 1)
+        self.assertEqual(scheduled.failure_code, "")
 
     @patch("apps.notifications.management.commands.process_notifications.SasuSyncSmsProvider")
     def test_sandbox_command_submits_without_claiming_delivery(self, provider_class):

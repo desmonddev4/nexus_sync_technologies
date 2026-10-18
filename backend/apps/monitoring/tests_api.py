@@ -329,3 +329,152 @@ class MonitoringIngestApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertEqual(Measurement.objects.count(), 0)
+
+
+class MonitoringRuleManagementApiTests(APITestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.coordinator = user_model.objects.create_user(username="ops-coordinator")
+        AccountProfile.objects.create(
+            user=self.coordinator,
+            role=AccountProfile.Role.EMERGENCY_COORDINATOR,
+        )
+        self.clinician = user_model.objects.create_user(username="ops-clinician")
+        AccountProfile.objects.create(
+            user=self.clinician,
+            role=AccountProfile.Role.CLINICIAN,
+        )
+        self.patient_user = user_model.objects.create_user(username="ops-patient")
+        AccountProfile.objects.create(
+            user=self.patient_user,
+            role=AccountProfile.Role.PATIENT,
+        )
+
+    def test_operations_staff_can_list_rules(self):
+        rule = MonitoringRule.objects.create(
+            name="High HR",
+            measurement_type=Measurement.Type.HEART_RATE,
+            operator=MonitoringRule.Operator.GREATER_THAN,
+            threshold="100",
+            priority=MonitoringRule.Priority.HIGH,
+            version="v1",
+        )
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.get("/api/v1/monitoring/rules/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["id"], str(rule.pk))
+
+    def test_non_operations_role_cannot_list_rules(self):
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.get("/api/v1/monitoring/rules/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_clinician_can_create_rule(self):
+        self.client.force_authenticate(self.clinician)
+
+        response = self.client.post(
+            "/api/v1/monitoring/rules/",
+            {
+                "name": "Low SpO2",
+                "description": "Alert if oxygen is low",
+                "measurement_type": Measurement.Type.SPO2,
+                "operator": MonitoringRule.Operator.LESS_THAN,
+                "threshold": "92",
+                "priority": MonitoringRule.Priority.CRITICAL,
+                "minimum_consecutive_readings": 2,
+                "lookback_window_seconds": 300,
+                "include_simulated": False,
+                "version": "v1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(response.json()["is_enabled"])
+
+    def test_coordinator_cannot_create_rule(self):
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.post(
+            "/api/v1/monitoring/rules/",
+            {
+                "name": "Rule",
+                "measurement_type": Measurement.Type.HEART_RATE,
+                "operator": MonitoringRule.Operator.GREATER_THAN,
+                "threshold": "100",
+                "priority": MonitoringRule.Priority.HIGH,
+                "minimum_consecutive_readings": 1,
+                "lookback_window_seconds": 300,
+                "include_simulated": True,
+                "version": "v1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_clinician_can_review_enable_rule(self):
+        rule = MonitoringRule.objects.create(
+            name="Enable Me",
+            measurement_type=Measurement.Type.HEART_RATE,
+            operator=MonitoringRule.Operator.GREATER_THAN,
+            threshold="100",
+            priority=MonitoringRule.Priority.HIGH,
+            version="v1",
+        )
+        self.client.force_authenticate(self.clinician)
+
+        response = self.client.post(
+            f"/api/v1/monitoring/rules/{rule.pk}/review/",
+            {"is_enabled": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        rule.refresh_from_db()
+        self.assertTrue(rule.is_enabled)
+        self.assertEqual(rule.reviewed_by, self.clinician)
+        self.assertIsNotNone(rule.reviewed_at)
+
+    def test_evaluated_rule_version_cannot_be_modified(self):
+        patient = Patient.objects.create(full_name="Rule Patient")
+        rule = MonitoringRule.objects.create(
+            name="Immutable",
+            measurement_type=Measurement.Type.HEART_RATE,
+            operator=MonitoringRule.Operator.GREATER_THAN,
+            threshold="100",
+            priority=MonitoringRule.Priority.HIGH,
+            version="v1",
+            is_enabled=True,
+            reviewed_by=self.clinician,
+            reviewed_at=timezone.now(),
+        )
+        measurement = Measurement.objects.create(
+            patient=patient,
+            event_id=uuid.uuid4(),
+            measurement_type=Measurement.Type.HEART_RATE,
+            value="130",
+            unit="bpm",
+            source=Measurement.Source.MANUAL,
+            quality=Measurement.Quality.ACCEPTABLE,
+            measured_at=timezone.now(),
+        )
+        MonitoringRuleEvaluation.objects.create(
+            rule=rule,
+            measurement=measurement,
+            status=MonitoringRuleEvaluation.Status.NO_MATCH,
+            details={},
+        )
+        self.client.force_authenticate(self.clinician)
+
+        response = self.client.patch(
+            f"/api/v1/monitoring/rules/{rule.pk}/",
+            {"threshold": "120"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

@@ -1,4 +1,4 @@
-import { Activity, Ambulance, ClipboardList, HeartPulse, LogOut, Users } from 'lucide-react'
+import { Activity, Ambulance, ClipboardList, HeartPulse, LogOut, ScrollText, Settings2, Siren, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import './AppShell.css'
@@ -7,6 +7,10 @@ const navigation = [
   { to: '/', label: 'Operations overview', icon: Activity, end: true },
   { to: '/incidents', label: 'Incident queue', icon: ClipboardList },
   { to: '/patients', label: 'Patients', icon: Users },
+  { to: '/monitoring/rules', label: 'Monitoring rules', icon: Siren },
+  { to: '/audit/logs', label: 'Audit logs', icon: ScrollText },
+  { to: '/accounts', label: 'Accounts', icon: Settings2 },
+  { to: '/settings', label: 'Settings', icon: Settings2 },
   { to: '/services', label: 'Emergency services', icon: Ambulance },
 ]
 

@@ -8,6 +8,12 @@ from apps.notifications.providers import (
     SasuSyncSmsProvider,
 )
 from apps.notifications.services import claim_notification, record_submission, transition_notification
+from apps.notifications.services import (
+    get_default_escalation_policy,
+    queue_due_notification_retries,
+    recover_stuck_processing_notifications,
+    schedule_retry_attempt,
+)
 
 
 class Command(BaseCommand):
@@ -32,11 +38,15 @@ class Command(BaseCommand):
             raise CommandError("Select exactly one mode: --sandbox or --sasusync.")
         if options["limit"] < 1:
             raise CommandError("--limit must be greater than zero.")
+        policy = get_default_escalation_policy()
 
         try:
             provider = SasuSyncSmsProvider(sandbox=options["sandbox"])
         except ProviderConfigurationError as error:
             raise CommandError(str(error)) from error
+        recovered = recover_stuck_processing_notifications(policy=policy, limit=options["limit"])
+        retried, exhausted = queue_due_notification_retries(policy=policy, limit=options["limit"])
+
         notification_ids = IncidentNotification.objects.filter(
             status=IncidentNotification.Status.QUEUED,
         ).order_by("created_at").values_list("pk", flat=True)[: options["limit"]]
@@ -54,17 +64,27 @@ class Command(BaseCommand):
             try:
                 result = provider.submit(notification, idempotency_key=str(notification.pk))
             except ProviderRejectedError as error:
-                transition_notification(
+                failed = transition_notification(
                     notification=notification,
                     new_status=IncidentNotification.Status.FAILED,
                     failure_code=error.failure_code,
                 )
+                schedule_retry_attempt(
+                    notification=failed,
+                    policy=policy,
+                    reason=error.failure_code,
+                )
                 rejected += 1
             except ProviderSubmissionUnknownError:
-                transition_notification(
+                unknown_notification = transition_notification(
                     notification=notification,
                     new_status=IncidentNotification.Status.SUBMISSION_UNKNOWN,
                     failure_code="submission_outcome_unknown",
+                )
+                schedule_retry_attempt(
+                    notification=unknown_notification,
+                    policy=policy,
+                    reason="submission_outcome_unknown",
                 )
                 unknown += 1
             else:
@@ -75,9 +95,15 @@ class Command(BaseCommand):
                 )
                 submitted += 1
 
+        unknown_open = IncidentNotification.objects.filter(
+            status=IncidentNotification.Status.SUBMISSION_UNKNOWN
+        ).count()
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"Submitted: {submitted}; rejected: {rejected}; outcome unknown: {unknown}. "
+                f"Recovered processing: {recovered}; due retries queued: {retried}; retries exhausted: {exhausted}; "
+                f"submitted: {submitted}; rejected: {rejected}; outcome unknown: {unknown}; "
+                f"open submission_unknown: {unknown_open}. "
                 "Submission does not mean delivered."
             )
         )

@@ -1,75 +1,75 @@
-# React + TypeScript + Vite
+# Nexus Sync Operations Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Custom React + TypeScript web dashboard for Nexus Sync emergency operations.
 
-Currently, two official plugins are available:
+## Scope
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This app is the operator-facing control room interface for:
 
-## React Compiler
+- authenticated staff access
+- live incident queue and incident detail workflows
+- patient directory visibility (role-scoped by backend)
+- provider, facility, and fleet directory visibility
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+This app does not expose provider API keys or run provider-side dispatch actions directly in the browser.
 
-## Expanding the ESLint configuration
+## Run locally
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Default dev URL is provided by Vite.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Build and quality checks
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run lint
+npm run build
+npm run preview
 ```
+
+## Environment
+
+- `VITE_API_BASE_URL`: Backend API base URL (defaults to `/api/v1`)
+
+Examples:
+
+- local backend on same host through proxy/path routing: leave unset
+- backend on another host: set `VITE_API_BASE_URL` to full API base
+
+For Vercel, set `VITE_API_BASE_URL` to the deployed Render backend origin, for example `https://YOUR_RENDER_BACKEND/api/v1`. The dashboard uses token auth, so cross-origin requests require the backend CORS allowlist to include the Vercel origin.
+
+## Implemented routes
+
+- `/login`: staff sign-in
+- `/`: operations overview
+- `/incidents`: incident queue
+- `/incidents/:incidentId`: incident detail workflow
+- `/patients`: patient directory
+- `/services`: providers, facilities, and fleet directory
+
+## Auth and access model
+
+- login uses backend token auth endpoint: `POST /api/v1/auth/token/`
+- current user check uses: `GET /api/v1/auth/me/`
+- protected routes require a valid token and `can_access_operations=true`
+- token is stored in browser session storage with in-memory fallback
+
+## Project structure
+
+```text
+src/
+  api/          # fetch client and operations endpoints
+  auth/         # auth context and hooks
+  components/   # reusable UI components with local CSS
+  pages/        # page modules with local CSS
+  styles/       # global shared styles
+  types/        # API response/data types
+```
+
+## Notes
+
+- Simulator-sourced data is explicitly labeled in UI where available.
+- Dispatch confirmation is operator-recorded evidence and should not be interpreted as direct provider system integration.

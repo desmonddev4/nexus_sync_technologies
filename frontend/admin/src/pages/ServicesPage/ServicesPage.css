@@ -17,3 +17,6 @@
 .page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
 .loading-row { padding: 18px; color: var(--muted); font-size: 12px; }
 @media (max-width: 760px) { .service-columns { grid-template-columns: 1fr; } .service-section:last-child { grid-column: auto; } }
+@media (max-width: 560px) {
+	.service-row { align-items: flex-start; flex-direction: column; }
+}

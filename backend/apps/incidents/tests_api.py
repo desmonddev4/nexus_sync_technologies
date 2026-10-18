@@ -55,6 +55,7 @@ class SOSApiTests(APITestCase):
             name="Simulated Dispatch Provider" if simulated else "Verified Dispatch Provider",
             provider_type=EmergencyProvider.Type.PRIVATE_AMBULANCE,
             verification_status=provider_status,
+            fleet_feed_authorized=True,
         )
         values = {
             "provider": provider,
@@ -420,6 +421,22 @@ class SOSApiTests(APITestCase):
 
         self.assertEqual(assignment.status_code, 403)
         self.assertEqual(dispatch.status_code, 403)
+
+    def test_provider_vehicle_requires_explicit_feed_authorization(self):
+        incident = self.create_acknowledged_incident()
+        vehicle = self.create_vehicle()
+        vehicle.provider.fleet_feed_authorized = False
+        vehicle.provider.save(update_fields=("fleet_feed_authorized", "updated_at"))
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.post(
+            f"/api/v1/incidents/{incident.pk}/assign-responder/",
+            {"vehicle": str(vehicle.pk)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("not authorized", str(response.json()))
 
     def test_closing_incident_releases_vehicle(self):
         incident = self.create_acknowledged_incident()

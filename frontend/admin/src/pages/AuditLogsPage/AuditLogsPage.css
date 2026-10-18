@@ -1,0 +1,29 @@
+.audit-page { display: grid; gap: 16px; }
+.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.page-eyebrow { margin: 0 0 8px; color: var(--muted); font: 500 9px var(--mono); letter-spacing: .08em; }
+.page-heading h1 { margin: 0; color: var(--ink); font: 600 28px var(--display); }
+.page-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+.audit-count { padding: 7px 9px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 4px; font: 10px var(--mono); }
+.audit-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.audit-filters label { display: grid; gap: 6px; color: var(--ink); font-size: 11px; }
+.audit-filters input, .audit-filters select { min-height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; }
+.audit-filter-actions { display: inline-flex; align-items: end; gap: 8px; }
+.audit-filter-actions button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; color: #fff; background: var(--forest); border: 0; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.audit-filter-actions button.secondary { color: var(--ink); background: #eef1ee; }
+.audit-filter-actions button:hover:not(:disabled) { background: var(--green); }
+.audit-filter-actions button.secondary:hover:not(:disabled) { color: #fff; }
+.detail-panel { min-width: 0; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.detail-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.detail-panel h2 { margin: 0; color: var(--ink); font: 600 16px var(--display); }
+.request-id { display: block; color: var(--muted); font: 9px var(--mono); }
+.page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
+.loading-row { padding: 14px; color: var(--muted); font-size: 11px; }
+@media (max-width: 900px) {
+  .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .audit-filters { grid-template-columns: 1fr; }
+  .audit-filter-actions { align-items: stretch; flex-wrap: wrap; }
+  .audit-filter-actions button { flex: 1 1 140px; }
+  .detail-panel { padding: 12px; }
+}

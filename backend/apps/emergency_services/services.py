@@ -45,10 +45,16 @@ def eligible_vehicles(
         current_incident__isnull=True,
     )
     if not include_simulated:
-        vehicles = vehicles.filter(data_source=AmbulanceVehicle.DataSource.PROVIDER)
+        vehicles = vehicles.filter(
+            data_source=AmbulanceVehicle.DataSource.PROVIDER,
+            provider__fleet_feed_authorized=True,
+        )
     else:
         vehicles = vehicles.filter(
-            Q(data_source=AmbulanceVehicle.DataSource.PROVIDER)
+            Q(
+                data_source=AmbulanceVehicle.DataSource.PROVIDER,
+                provider__fleet_feed_authorized=True,
+            )
             | Q(
                 data_source=AmbulanceVehicle.DataSource.SIMULATOR,
                 provider__verification_status=EmergencyProvider.VerificationStatus.SIMULATED,

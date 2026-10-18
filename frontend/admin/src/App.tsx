@@ -7,6 +7,11 @@ import { OverviewPage } from './pages/OverviewPage/OverviewPage'
 import { IncidentsPage } from './pages/IncidentsPage/IncidentsPage'
 import { IncidentDetailPage } from './pages/IncidentDetailPage/IncidentDetailPage'
 import { PatientsPage } from './pages/PatientsPage/PatientsPage'
+import { PatientDetailPage } from './pages/PatientDetailPage/PatientDetailPage'
+import { MonitoringRulesPage } from './pages/MonitoringRulesPage/MonitoringRulesPage'
+import { AuditLogsPage } from './pages/AuditLogsPage/AuditLogsPage'
+import { AccountsPage } from './pages/AccountsPage/AccountsPage'
+import { SettingsPage } from './pages/SettingsPage/SettingsPage'
 import { ServicesPage } from './pages/ServicesPage/ServicesPage'
 
 function App() {
@@ -21,6 +26,11 @@ function App() {
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="incidents/:incidentId" element={<IncidentDetailPage />} />
               <Route path="patients" element={<PatientsPage />} />
+              <Route path="patients/:patientId" element={<PatientDetailPage />} />
+              <Route path="monitoring/rules" element={<MonitoringRulesPage />} />
+              <Route path="audit/logs" element={<AuditLogsPage />} />
+              <Route path="accounts" element={<AccountsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
               <Route path="services" element={<ServicesPage />} />
             </Route>
           </Route>

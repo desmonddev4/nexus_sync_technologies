@@ -1,9 +1,11 @@
+from datetime import timedelta
+
 from django.db import transaction
 from django.utils import timezone
 
 from apps.patients.models import ConsentRecord, EmergencyContact
 
-from .models import IncidentNotification, NotificationEvent
+from .models import EscalationPolicy, IncidentNotification, NotificationEvent
 
 
 ALLOWED_TRANSITIONS = {
@@ -22,6 +24,7 @@ ALLOWED_TRANSITIONS = {
         IncidentNotification.Status.SUBMITTED,
         IncidentNotification.Status.DELIVERED,
         IncidentNotification.Status.FAILED,
+        IncidentNotification.Status.QUEUED,
     },
     IncidentNotification.Status.FAILED: {IncidentNotification.Status.QUEUED},
     IncidentNotification.Status.DELIVERED: {
@@ -324,3 +327,92 @@ def reconcile_sasusync_status_snapshot(*, notification, snapshot):
         provider_status=provider_status,
         event_at=timezone.now(),
     )
+
+
+def get_default_escalation_policy():
+    policy, _ = EscalationPolicy.objects.get_or_create(singleton_key="default")
+    return policy
+
+
+@transaction.atomic
+def schedule_retry_attempt(*, notification, policy=None, reason=""):
+    policy = policy or get_default_escalation_policy()
+    notification = IncidentNotification.objects.select_for_update().get(pk=notification.pk)
+    if notification.retry_count >= policy.max_retry_attempts:
+        if notification.failure_code != "max_retries_exhausted":
+            notification.failure_code = "max_retries_exhausted"
+            notification.next_attempt_at = None
+            notification.save(update_fields=("failure_code", "next_attempt_at", "updated_at"))
+        return notification
+
+    next_attempt = timezone.now() + timedelta(minutes=policy.retry_interval_minutes)
+    notification.next_attempt_at = next_attempt
+    if notification.status == IncidentNotification.Status.PROCESSING:
+        notification.status = IncidentNotification.Status.SUBMISSION_UNKNOWN
+    if reason:
+        notification.failure_code = reason[:80]
+    notification.save(update_fields=("status", "next_attempt_at", "failure_code", "updated_at"))
+    return notification
+
+
+@transaction.atomic
+def recover_stuck_processing_notifications(*, policy=None, now=None, limit=200):
+    policy = policy or get_default_escalation_policy()
+    now = now or timezone.now()
+    stuck_before = now - timedelta(minutes=policy.initial_notification_timeout_minutes)
+    notifications = (
+        IncidentNotification.objects.select_for_update()
+        .filter(
+            status=IncidentNotification.Status.PROCESSING,
+            processing_started_at__isnull=False,
+            processing_started_at__lte=stuck_before,
+        )
+        .order_by("processing_started_at")[:limit]
+    )
+    recovered = 0
+    for notification in notifications:
+        transition_notification(
+            notification=notification,
+            new_status=IncidentNotification.Status.SUBMISSION_UNKNOWN,
+            failure_code="processing_timeout",
+        )
+        schedule_retry_attempt(
+            notification=notification,
+            policy=policy,
+            reason="processing_timeout",
+        )
+        recovered += 1
+    return recovered
+
+
+@transaction.atomic
+def queue_due_notification_retries(*, policy=None, now=None, limit=200):
+    policy = policy or get_default_escalation_policy()
+    now = now or timezone.now()
+    pending = (
+        IncidentNotification.objects.select_for_update()
+        .filter(
+            status__in=(
+                IncidentNotification.Status.FAILED,
+                IncidentNotification.Status.SUBMISSION_UNKNOWN,
+            ),
+            next_attempt_at__isnull=False,
+            next_attempt_at__lte=now,
+        )
+        .order_by("next_attempt_at")[:limit]
+    )
+    queued = 0
+    exhausted = 0
+    for notification in pending:
+        if notification.retry_count >= policy.max_retry_attempts:
+            notification.next_attempt_at = None
+            notification.failure_code = "max_retries_exhausted"
+            notification.save(update_fields=("next_attempt_at", "failure_code", "updated_at"))
+            exhausted += 1
+            continue
+        transition_notification(
+            notification=notification,
+            new_status=IncidentNotification.Status.QUEUED,
+        )
+        queued += 1
+    return queued, exhausted

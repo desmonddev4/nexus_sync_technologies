@@ -13,8 +13,16 @@
 .patient-main, .patient-contact { display: grid; min-width: 0; gap: 5px; }
 .patient-main { flex: 1; }
 .patient-main strong { overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.patient-link { color: var(--ink); text-decoration: none; }
+.patient-link:hover { color: var(--green); text-decoration: underline; }
 .patient-main small, .patient-contact small { color: var(--muted); font: 9px var(--mono); }
 .patient-contact { min-width: 150px; color: var(--ink); font-size: 11px; }
+.row-open { display: inline-flex; min-height: 26px; min-width: 26px; align-items: center; justify-content: center; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; text-decoration: none; }
+.row-open:hover { color: var(--green); border-color: var(--green); }
 .page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
 .loading-row { padding: 18px; color: var(--muted); font-size: 12px; }
-@media (max-width: 620px) { .patient-row { flex-wrap: wrap; } .patient-contact { min-width: 0; flex: 1 1 100%; padding-left: 47px; } }
+@media (max-width: 620px) {
+	.patient-row { align-items: flex-start; flex-wrap: wrap; }
+	.patient-main { flex: 1 1 calc(100% - 80px); }
+	.patient-contact { min-width: 0; flex: 1 1 100%; padding-left: 47px; }
+}

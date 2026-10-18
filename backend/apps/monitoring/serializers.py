@@ -4,7 +4,7 @@ from apps.accounts.models import AccountProfile
 from apps.devices.models import Device
 from apps.patients.models import Patient
 
-from .models import Measurement, PatientLocation
+from .models import Measurement, MonitoringRule, MonitoringRuleEvaluation, PatientLocation
 
 
 class PatientDataIngestSerializer(serializers.Serializer):
@@ -171,5 +171,76 @@ class PatientLocationSerializer(serializers.ModelSerializer):
             "quality",
             "recorded_at",
             "received_at",
+        )
+        read_only_fields = fields
+
+
+class MonitoringRuleSerializer(serializers.ModelSerializer):
+    reviewed_by_username = serializers.SerializerMethodField()
+    evaluation_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MonitoringRule
+        fields = (
+            "id",
+            "name",
+            "description",
+            "measurement_type",
+            "operator",
+            "threshold",
+            "priority",
+            "minimum_consecutive_readings",
+            "lookback_window_seconds",
+            "include_simulated",
+            "version",
+            "is_enabled",
+            "reviewed_by",
+            "reviewed_by_username",
+            "reviewed_at",
+            "evaluation_count",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "is_enabled",
+            "reviewed_by",
+            "reviewed_by_username",
+            "reviewed_at",
+            "evaluation_count",
+            "created_at",
+            "updated_at",
+        )
+
+    def validate(self, attrs):
+        if self.instance and self.instance.evaluations.exists() and attrs:
+            raise serializers.ValidationError(
+                "Evaluated rule versions are immutable. Create a new version to change this rule."
+            )
+        return attrs
+
+    def get_reviewed_by_username(self, obj):
+        return obj.reviewed_by.get_username() if obj.reviewed_by else None
+
+    def get_evaluation_count(self, obj):
+        return obj.evaluations.count()
+
+
+class MonitoringRuleReviewSerializer(serializers.Serializer):
+    is_enabled = serializers.BooleanField()
+
+
+class MonitoringRuleEvaluationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MonitoringRuleEvaluation
+        fields = (
+            "id",
+            "rule",
+            "measurement",
+            "incident",
+            "status",
+            "details",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = fields

@@ -21,17 +21,30 @@ backend/
 	manage.py
 	requirements.txt
 frontend/
-	src/
-		components/           # Reusable component, each in its own directory
-		screens/              # React Native screens, each in its own directory
-		navigation/
-		services/             # Backend API clients
-		types/
+	admin/
+		src/
+			api/                # API clients for backend operations endpoints
+			auth/               # Login/session context and route protection
+			components/         # Reusable UI components, each in its own directory
+			pages/              # Dashboard pages, each in its own directory
+			types/              # Shared frontend API/data contracts
 ```
 
 Each backend domain is a separate Django app. Backend models, serializers, services, API views, and tests belong with the domain that owns them; shared behavior belongs in `apps/core` only when it is genuinely cross-domain.
 
-The frontend will use React Native and TypeScript, not HTML or web CSS. Keep each screen and reusable component in its own file/directory. Give each screen/component its own adjacent `.styles.ts` file using React Native `StyleSheet`; this keeps styles modular while remaining compatible with mobile.
+The active operator interface is a custom React + TypeScript web dashboard in `frontend/admin`. Keep each page and reusable component in its own file/directory with page-local or component-local CSS.
+
+React Native remains a separate later phase for patient/responder mobile clients after web dashboard workflows and API contracts stabilize.
+
+## Frontend admin setup
+
+```bash
+cd frontend/admin
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` if your API is not served from `/api/v1`.
 
 ## Backend setup
 
@@ -49,6 +62,19 @@ python manage.py runserver
 The development settings use SQLite by default so the API can be started locally without external services. To use PostgreSQL, set `DB_ENGINE=postgresql` and configure the `DB_*` values in `backend/.env`. Never commit `.env` or real credentials.
 
 Create user accounts and assign their `AccountProfile` roles through trusted admin provisioning. There is no public user-registration endpoint.
+
+## Deployment on Render and Vercel
+
+Backend production runs from `backend/config/wsgi.py`, which defaults to the production settings module. A Render blueprint is available at `render.yaml` for the backend service and Postgres database.
+
+Use these Render settings for the Django web service:
+
+- build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput`
+- start command: `gunicorn config.wsgi:application`
+- environment variables: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DB_ENGINE=postgresql`, and the `DB_*` values for Render Postgres
+- optional frontend origin allowlist: `CORS_ALLOWED_ORIGINS=https://YOUR_FRONTEND_DOMAIN`
+
+For the Vercel frontend, set `VITE_API_BASE_URL` to the deployed backend base URL, for example `https://YOUR_RENDER_BACKEND/api/v1`. If you do not set it, the app will use a same-origin `/api/v1` path, which only works when the frontend is served from the same host or through a proxy.
 
 Register a device in Django admin, assign it to a patient, and set it to active before issuing credentials. The credential is printed once and stored on the server only as a digest:
 
@@ -70,6 +96,14 @@ In the SasuSync API-key settings, configure the webhook URL as `https://YOUR_PUB
 
 `python manage.py process_notifications --sandbox --limit 50` uses SasuSync's free sandbox endpoint; it requires the API key and an approved sender ID, but it does not deliver messages. Sandbox submissions are stored separately and never count as real delivery. `python manage.py process_notifications --sasusync --limit 50` sends real SMS and can incur charges. A send response records the provider task ID and `submitted` status. Signed webhooks update delivery status; `python manage.py reconcile_sasusync_status --limit 50` polls submitted live task IDs if a webhook is missed. Transient HTTP errors use bounded backoff. Network timeouts are held as ambiguous and are never blindly resent. Do not run live sending against test patient data.
 
+### Operator workflow for failed or unconfirmed notifications
+
+1. Run `python manage.py process_notifications --sasusync --limit 50` on schedule.
+2. The command automatically recovers notifications stuck in `processing` beyond policy timeout and marks them `submission_unknown`.
+3. The command schedules retries for `failed` and `submission_unknown` outcomes using the escalation policy retry interval and max attempts.
+4. Run `python manage.py reconcile_sasusync_status --limit 50` to reconcile submitted live task IDs when callbacks are delayed or missing.
+5. If `open submission_unknown` remains non-zero after retries, treat as unconfirmed delivery and perform manual contact escalation per your emergency SOP.
+
 ## Current API
 
 Application endpoints require authentication except health and token login. The SasuSync webhook uses its raw-body HMAC signature. Patient and incident data are restricted by account role and patient association.
@@ -77,6 +111,7 @@ Application endpoints require authentication except health and token login. The 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `POST` | `/api/v1/auth/token/` | Obtain a user token |
+| `GET` | `/api/v1/auth/me/` | Return current username, role, and operations-access flag |
 | `GET` | `/api/v1/health/` | JSON service health |
 | `POST` | `/api/v1/devices/heartbeat/` | Update device health using device credentials |
 | `GET`, `POST` | `/api/v1/patients/` | List or create patients |
@@ -111,9 +146,15 @@ Monitoring rules are configured in Django admin. No clinical thresholds are seed
 
 Authorized admins can review patient and incident access, object-level denied access attempts, patient changes, SOS creation/retries, and measurement/location ingestion in Django admin under Audit logs. Entries record the actor when authenticated, action, resource identifier, request method, request ID, client IP, and outcome. Audit metadata intentionally excludes patient names, medical notes, coordinates, measurement values, message bodies, and credentials. Incident timeline events remain separately available at `/api/v1/incidents/{id}/events/`.
 
+Emergency coordinators and superusers can export filtered logs at `GET /api/v1/audit/logs/export/` as CSV (subject to `AUDIT_EXPORT_MAX_ROWS`). Clinicians can view logs but cannot export.
+
+Run `python manage.py prune_audit_logs --dry-run` to preview retention cleanup and `python manage.py prune_audit_logs` to delete rows older than `AUDIT_RETENTION_DAYS` (or override with `--days N`). Include this command in your scheduled backup/maintenance runbook before backup snapshots.
+
 Device-originated monitoring data requires an active, patient-assigned device credential. The backend derives the patient, device, and source from that credential rather than trusting those fields in the request. Credentials can be rotated by issuing again and revoked with `--revoke`. Simulator, manual, and validated-external sources remain explicit in stored measurement records. SOS creates queued notification records only for verified contacts when the latest emergency-contact consent is granted.
 
 Seed the local UPSA demo fleet with `python manage.py seed_upsa_simulation`. The seeded provider and vehicle are marked simulation-only; simulated vehicles appear in nearby results only when `include_simulated=true` is explicitly requested. Their positions are not real ambulance locations and do not establish dispatch availability.
+
+Verified providers now require explicit fleet-feed authorization before provider-sourced live vehicles can appear in nearby/assignment workflows. This prevents accidental operational use of unapproved provider feeds. Dispatch confirmation remains operator-recorded evidence (`record-dispatch-confirmation`) and is not auto-confirmed from provider integrations.
 
 To exercise the outbox against SasuSync without delivering a real message, configure the approved API key and sender ID, then run `python manage.py process_notifications --sandbox`.
 
@@ -124,7 +165,7 @@ python manage.py check
 python manage.py test apps.core apps.accounts apps.patients apps.devices apps.incidents apps.monitoring apps.notifications apps.emergency_services
 ```
 
-The API returns JSON only. The domain apps are being built incrementally, with backend behavior and tests before the React Native application.
+The API returns JSON only. The domain apps are being built incrementally, with backend behavior and tests supporting the custom web operations dashboard.
 
 ## Safety and pilot boundary
 

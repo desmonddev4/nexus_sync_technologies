@@ -81,3 +81,27 @@ class NotificationEvent(UUIDTimestampedModel):
 
     class Meta:
         ordering = ("created_at",)
+
+
+class EscalationPolicy(UUIDTimestampedModel):
+    singleton_key = models.CharField(max_length=32, unique=True, default="default")
+    initial_notification_timeout_minutes = models.PositiveSmallIntegerField(default=5)
+    retry_interval_minutes = models.PositiveSmallIntegerField(default=3)
+    max_retry_attempts = models.PositiveSmallIntegerField(default=3)
+    escalate_to_coordinator_after_minutes = models.PositiveSmallIntegerField(default=10)
+    require_operator_acknowledgement = models.BooleanField(default=True)
+    allow_simulation_escalation = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_escalation_policies",
+    )
+
+    class Meta:
+        ordering = ("-updated_at",)
+
+    def __str__(self):
+        return "Escalation policy"

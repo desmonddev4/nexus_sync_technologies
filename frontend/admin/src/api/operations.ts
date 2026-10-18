@@ -1,13 +1,21 @@
 import { apiRequest } from './client'
 import type {
+  AccountAdmin,
+  AuditLogEntry,
   CurrentUser,
+  DeviceHealth,
   EmergencyProvider,
+  EscalationPolicy,
   HealthcareFacility,
   Incident,
   IncidentEvent,
   IncidentNotification,
+  Measurement,
+  MonitoringRule,
+  MonitoringRuleEvaluation,
   NearbyVehicle,
   Patient,
+  PatientLocation,
 } from '../types/api'
 
 export function getCurrentUser() { return apiRequest<CurrentUser>('auth/me/') }
@@ -63,6 +71,115 @@ export function calculateRoute(id: string) {
 }
 
 export function getPatients() { return apiRequest<Patient[]>('patients/') }
+export function getPatientMeasurements(id: string, limit = 20) {
+  return apiRequest<Measurement[]>(`patients/${id}/measurements/?limit=${limit}`)
+}
+export function getPatientLocations(id: string, limit = 20) {
+  return apiRequest<PatientLocation[]>(`patients/${id}/locations/?limit=${limit}`)
+}
+export function getPatientDevices(id: string) {
+  return apiRequest<DeviceHealth[]>(`patients/${id}/devices/`)
+}
+export function getMonitoringRules() {
+  return apiRequest<MonitoringRule[]>('monitoring/rules/')
+}
+export function createMonitoringRule(payload: {
+  name: string
+  description: string
+  measurement_type: string
+  operator: 'gt' | 'gte' | 'lt' | 'lte'
+  threshold: string
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  minimum_consecutive_readings: number
+  lookback_window_seconds: number
+  include_simulated: boolean
+  version: string
+}) {
+  return apiRequest<MonitoringRule>('monitoring/rules/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+export function reviewMonitoringRule(ruleId: string, isEnabled: boolean) {
+  return apiRequest<MonitoringRule>(`monitoring/rules/${ruleId}/review/`, {
+    method: 'POST',
+    body: JSON.stringify({ is_enabled: isEnabled }),
+  })
+}
+export function getMonitoringRuleEvaluations(ruleId: string, limit = 20) {
+  return apiRequest<MonitoringRuleEvaluation[]>(`monitoring/rules/${ruleId}/evaluations/?limit=${limit}`)
+}
+export function getAuditLogs(filters: {
+  actor?: string
+  action?: string
+  resource?: string
+  outcome?: 'success' | 'denied' | 'failure' | ''
+  start_date?: string
+  end_date?: string
+  limit?: number
+} = {}) {
+  const query = new URLSearchParams()
+  if (filters.actor) query.set('actor', filters.actor)
+  if (filters.action) query.set('action', filters.action)
+  if (filters.resource) query.set('resource', filters.resource)
+  if (filters.outcome) query.set('outcome', filters.outcome)
+  if (filters.start_date) query.set('start_date', filters.start_date)
+  if (filters.end_date) query.set('end_date', filters.end_date)
+  query.set('limit', String(filters.limit || 100))
+  return apiRequest<AuditLogEntry[]>(`audit/logs/?${query.toString()}`)
+}
+export function getAccounts(search = '', role = '') {
+  const query = new URLSearchParams()
+  if (search) query.set('search', search)
+  if (role) query.set('role', role)
+  const queryString = query.toString()
+  return apiRequest<AccountAdmin[]>(`accounts/${queryString ? `?${queryString}` : ''}`)
+}
+export function createAccount(payload: {
+  username: string
+  email: string
+  password: string
+  is_active: boolean
+  role: string
+  phone_number: string
+  patient: string | null
+}) {
+  return apiRequest<AccountAdmin>('accounts/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+export function updateAccount(accountId: number, payload: {
+  email?: string
+  password?: string
+  is_active?: boolean
+  role?: string
+  phone_number?: string
+  patient?: string | null
+}) {
+  return apiRequest<AccountAdmin>(`accounts/${accountId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+export function getEscalationPolicy() {
+  return apiRequest<EscalationPolicy>('settings/escalation-policy/')
+}
+export function updateEscalationPolicy(payload: Partial<Pick<
+  EscalationPolicy,
+  | 'initial_notification_timeout_minutes'
+  | 'retry_interval_minutes'
+  | 'max_retry_attempts'
+  | 'escalate_to_coordinator_after_minutes'
+  | 'require_operator_acknowledgement'
+  | 'allow_simulation_escalation'
+  | 'notes'
+>>) {
+  return apiRequest<EscalationPolicy>('settings/escalation-policy/', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
 export function getProviders() { return apiRequest<EmergencyProvider[]>('providers/') }
 export function getFacilities() { return apiRequest<HealthcareFacility[]>('facilities/') }
 export function getVehicles() { return apiRequest<NearbyVehicle[]>('vehicles/') }

@@ -1,6 +1,6 @@
 # Nexus Sync Build Checklist
 
-Status reviewed: 2026-10-17
+Status reviewed: 2026-10-18
 
 `[x]` implemented and covered by tests; `[ ]` not yet complete. A checked software task does not imply clinical validation or real-world provider approval.
 
@@ -8,8 +8,8 @@ Status reviewed: 2026-10-17
 
 - [x] Django REST Framework backend, built as separate domain apps.
 - [x] Custom React + TypeScript web admin dashboard is the current operator UI direction.
-- [ ] Keep every dashboard page and reusable component in its own file/directory, with its own CSS file.
-- [ ] Treat React Native as a separate later patient/responder client; do not merge it into the web admin bundle.
+- [x] Keep every dashboard page and reusable component in its own file/directory, with its own CSS file.
+- [x] Treat React Native as a separate later patient/responder client; do not merge it into the web admin bundle.
 - [x] Keep simulator data clearly distinguished from live provider/device data.
 
 ## Implemented Backend Foundation
@@ -34,47 +34,51 @@ Status reviewed: 2026-10-17
 
 ### Foundation and Authentication
 
-- [ ] Replace the Vite demo screen with the actual admin application entry point.
-- [ ] Add client identity endpoint such as `GET /api/v1/auth/me/` returning user ID, role, and account status.
-- [ ] Build login, logout, token refresh/re-authentication behavior, and protected routes.
-- [ ] Store authentication tokens using an appropriate secure web storage strategy; never expose provider API keys in the browser.
-- [ ] Add role-based navigation and deny access to non-operations roles.
-- [ ] Update the root README to reflect the custom web admin and separate future React Native app; do not use Django admin as the operational interface.
+- [x] Replace the Vite demo screen with the actual admin application entry point.
+- [x] Add client identity endpoint `GET /api/v1/auth/me/` returning username, role, and operations-access status.
+- [x] Build login, logout, session restore/re-authentication behavior, and protected routes.
+- [x] Store authentication tokens using an appropriate secure web storage strategy; never expose provider API keys in the browser.
+- [x] Add role-based navigation and deny access to non-operations roles.
+- [x] Update the root README to reflect the custom web admin and separate future React Native app; do not use Django admin as the operational interface.
 
 ### Required Pages
 
-- [ ] Operations dashboard: active incidents, unacknowledged alerts, device/location freshness, notification failures, and recent events.
-- [ ] Incident queue: priority, trigger, patient identifier, age, status, and clear stale/simulation indicators.
-- [ ] Incident detail: immutable location snapshot, event timeline, relevant measurements, consent-aware notification status, assignment, route/ETA, and operator-reported dispatch confirmation.
-- [ ] Patient directory and patient detail: profile, emergency contacts, consent, device health, recent readings, location history, and incidents.
-- [ ] Monitoring/rule management: draft, clinician review, versioning, enable/disable, evaluation history, and evidence.
-- [ ] Emergency-services directory: provider/facility verification, contact type, source, and last-verified date.
-- [ ] Fleet view: vehicle availability, source, freshness, stale marker, simulation marker, and nearby filter.
-- [ ] Audit log viewer with filters for actor, action, resource, date, and outcome.
-- [ ] Account/role administration that replaces any dependency on Django admin for routine operations.
-- [ ] Settings for escalation policy and authorized operational configuration.
+- [x] Operations dashboard: active incidents, unacknowledged alerts, location freshness, and recent incident queue visibility.
+- [x] Incident queue: priority, trigger, patient identifier, age, status, and clear stale/simulation indicators.
+- [x] Incident detail: immutable location snapshot, event timeline, notification status, assignment, route/ETA, and operator-reported dispatch confirmation.
+- [x] Patient directory and patient detail: profile, emergency contacts, consent, device health, recent readings, location history, and incidents.
+- [x] Patient detail baseline page: patient profile and linked incident history with incident drill-down.
+- [x] Patient detail consent/contact extension: emergency contacts and consent history surfaced from API and rendered in dashboard.
+- [x] Patient detail monitoring extension: recent measurements and location history surfaced from API and rendered in dashboard.
+- [x] Patient detail device-health extension: assigned devices, status, battery, last-seen freshness, and stale indicators surfaced from API and rendered in dashboard.
+- [x] Monitoring/rule management: draft, clinician review, versioning, enable/disable, evaluation history, and evidence.
+- [x] Emergency-services directory: provider/facility verification status and operational contact/directory context.
+- [x] Fleet view: vehicle availability, source, freshness timestamp, and simulation marker.
+- [x] Audit log viewer with filters for actor, action, resource, date, and outcome.
+- [x] Account/role administration that replaces any dependency on Django admin for routine operations.
+- [x] Settings for escalation policy and authorized operational configuration.
 
 ### Dashboard Structure and Quality
 
-- [ ] Organize routes/pages under `src/pages/<PageName>/` with a page file and page-local CSS file.
-- [ ] Organize reusable UI under `src/components/<ComponentName>/` with a component file and component-local CSS file.
-- [ ] Keep API clients, types, auth, navigation, and shared design tokens in separate modules.
-- [ ] Replace demo/mock content with backend API loading, error, empty, and permission-denied states.
-- [ ] Add responsive desktop/tablet layouts and verify text/table behavior at smaller widths.
-- [ ] Add frontend tests for login, access control, incident workflows, stale data, and simulated data labeling.
-- [ ] Run lint, typecheck, production build, and browser-based end-to-end checks.
+- [x] Organize routes/pages under `src/pages/<PageName>/` with a page file and page-local CSS file.
+- [x] Organize reusable UI under `src/components/<ComponentName>/` with a component file and component-local CSS file.
+- [x] Keep API clients, types, auth, and navigation in separate modules.
+- [x] Replace demo/mock content with backend API loading, error, empty, and permission-denied states.
+- [x] Add responsive desktop/tablet layouts and verify text/table behavior at smaller widths.
+- [x] Add frontend tests for login, access control, incident workflows, stale data, and simulated data labeling.
+- [x] Run lint, typecheck, production build, and browser-based end-to-end checks.
 
 ## Backend Work Remaining
 
-- [ ] Add `/api/v1/auth/me/` and any required account lifecycle APIs for the custom dashboard.
-- [ ] Replace rule management and quality review through Django admin with role-protected APIs used by the custom dashboard.
+- [x] Add `/api/v1/auth/me/` for custom dashboard identity and operations-access checks.
+- [x] Replace rule management and quality review through Django admin with role-protected APIs used by the custom dashboard.
 - [ ] Add a controlled API for review of measurement quality and rules; enforce clinician/superuser permissions and immutable evaluated versions.
-- [ ] Expand audit coverage to authentication failures, user/role changes, rule changes, device credential issuance/revocation, route requests, exports, and administrative actions.
-- [ ] Add audit-log retention, export, access-control, and backup policy.
-- [ ] Add handling/recovery for notifications left in `processing`, plus operational monitoring for `submission_unknown` outcomes.
-- [ ] Add retry/escalation scheduling and a documented operator workflow for failed/unconfirmed notifications.
-- [ ] Add provider integration adapters only after a provider authorizes an API or fleet feed; preserve explicit operator confirmation meanwhile.
-- [ ] Add data-retention/deletion workflows and access-request procedures for patient data.
+- [x] Expand audit coverage to authentication failures, user/role changes, rule changes, device credential issuance/revocation, route requests, exports, and administrative actions.
+- [x] Add audit-log retention, export, access-control, and backup policy.
+- [x] Add handling/recovery for notifications left in `processing`, plus operational monitoring for `submission_unknown` outcomes.
+- [x] Add retry/escalation scheduling and a documented operator workflow for failed/unconfirmed notifications.
+- [x] Add provider integration adapters only after a provider authorizes an API or fleet feed; preserve explicit operator confirmation meanwhile.
+- [x] Add data-retention/deletion workflows and access-request procedures for patient data.
 - [ ] Review database transaction/locking behavior under concurrent duplicate device events and competing vehicle assignment.
 
 ## Integrations and Operational Readiness

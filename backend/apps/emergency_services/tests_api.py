@@ -18,6 +18,7 @@ class EmergencyDirectoryApiTests(TestCase):
             name="Verified Pilot Provider",
             provider_type=EmergencyProvider.Type.PRIVATE_AMBULANCE,
             verification_status=EmergencyProvider.VerificationStatus.VERIFIED,
+            fleet_feed_authorized=True,
             dispatch_phone_number="+233200000000",
         )
         self.vehicle = AmbulanceVehicle.objects.create(
@@ -49,6 +50,7 @@ class EmergencyDirectoryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()), 1)
         self.assertEqual(response.json()[0]["dispatch_phone_number"], "+233200000000")
+        self.assertTrue(response.json()[0]["fleet_feed_authorized"])
 
     def test_nearby_api_excludes_simulation_until_explicitly_requested(self):
         self.provider.verification_status = EmergencyProvider.VerificationStatus.SIMULATED
@@ -66,6 +68,19 @@ class EmergencyDirectoryApiTests(TestCase):
         self.assertEqual(len(included.json()), 1)
         self.assertTrue(included.json()[0]["is_simulated"])
         self.assertEqual(included.json()[0]["distance_kilometers"], 0)
+
+    def test_nearby_api_excludes_provider_feed_when_not_authorized(self):
+        self.vehicle.data_source = AmbulanceVehicle.DataSource.PROVIDER
+        self.vehicle.save(update_fields=("data_source", "updated_at"))
+        self.provider.fleet_feed_authorized = False
+        self.provider.save(update_fields=("fleet_feed_authorized", "updated_at"))
+        client = APIClient()
+        client.force_authenticate(self.coordinator)
+
+        response = client.get("/api/v1/vehicles/nearby/?latitude=5.6037&longitude=-0.1870")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
 
     def test_invalid_coordinates_are_rejected(self):
         client = APIClient()
