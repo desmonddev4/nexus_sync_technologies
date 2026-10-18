@@ -77,6 +77,12 @@ class MeasurementAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = self.readonly_fields
+        if obj and obj.quality != Measurement.Quality.UNREVIEWED:
+            return (*readonly_fields, "quality")
+        return readonly_fields
+
     def has_delete_permission(self, request, obj=None):
         return False
 

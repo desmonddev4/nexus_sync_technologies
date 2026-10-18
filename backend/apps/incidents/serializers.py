@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.models import AccountProfile
+from apps.devices.models import Device
 from apps.monitoring.models import PatientLocation
 from apps.patients.models import Patient
 
@@ -11,14 +12,30 @@ from .models import Incident, IncidentEvent, IncidentLocationSnapshot
 
 
 class SOSCreateSerializer(serializers.Serializer):
-    patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all())
+    patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all(), required=False)
     event_id = serializers.UUIDField()
     trigger_source = serializers.ChoiceField(
-        choices=(Incident.Source.MANUAL, Incident.Source.SIMULATOR),
+        choices=(Incident.Source.MANUAL, Incident.Source.WEARABLE, Incident.Source.SIMULATOR),
     )
 
     def validate(self, attrs):
+        device = self.context["request"].auth
+        if isinstance(device, Device):
+            expected_source = (
+                Incident.Source.SIMULATOR
+                if device.device_type == Device.Type.SIMULATOR
+                else Incident.Source.WEARABLE
+            )
+            if attrs["trigger_source"] != expected_source:
+                raise serializers.ValidationError({"trigger_source": "Trigger source does not match device type."})
+            if attrs.get("patient") and attrs["patient"].pk != device.patient_id:
+                raise serializers.ValidationError({"patient": "Device is not assigned to this patient."})
+            attrs["patient"] = device.patient
+            return attrs
+
         user = self.context["request"].user
+        if "patient" not in attrs:
+            raise serializers.ValidationError({"patient": "This field is required."})
         if user.is_superuser:
             return attrs
 

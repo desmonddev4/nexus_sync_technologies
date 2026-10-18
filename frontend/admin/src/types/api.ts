@@ -235,6 +235,8 @@ export interface EmergencyProvider {
   dispatch_phone_number: string
   general_phone_number: string
   address: string
+  latitude?: string | null
+  longitude?: string | null
   coverage_description: string
   verification_status: string
   verified_at: string | null
@@ -267,4 +269,10 @@ export interface NearbyVehicle {
   location_updated_at: string | null
   current_incident: string | null
   distance_kilometers: number
+}
+
+export interface MeasurementQualityReview extends Measurement {
+  patient_name: string
+  quality_reviewed_by: number | null
+  quality_reviewed_at: string | null
 }

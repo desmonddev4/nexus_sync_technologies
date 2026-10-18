@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import AccountProfile
 from apps.audit.models import AuditLog
+from apps.devices.models import Device, DeviceCredential
 from apps.emergency_services.models import AmbulanceVehicle, EmergencyProvider
 from apps.incidents.models import Incident, IncidentEvent
 from apps.incidents.models import IncidentLocationSnapshot, IncidentRoute
@@ -89,6 +90,52 @@ class SOSApiTests(APITestCase):
         self.assertEqual(first.json()["id"], retry.json()["id"])
         self.assertEqual(Incident.objects.count(), 1)
         self.assertEqual(IncidentEvent.objects.count(), 1)
+
+    def test_authenticated_simulator_can_raise_idempotent_sos_without_client_patient_id(self):
+        device = Device.objects.create(
+            device_identifier="NS-SOS-SIM-001",
+            device_type=Device.Type.SIMULATOR,
+            patient=self.patient,
+            status=Device.Status.ACTIVE,
+        )
+        secret = DeviceCredential.issue(device)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Device {device.device_identifier}:{secret}")
+        payload = {"event_id": str(self.event_id), "trigger_source": Incident.Source.SIMULATOR}
+
+        first = self.client.post("/api/v1/incidents/sos/", payload, format="json")
+        retry = self.client.post("/api/v1/incidents/sos/", payload, format="json")
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(first.json()["id"], retry.json()["id"])
+        self.assertEqual(Incident.objects.count(), 1)
+        self.assertEqual(Incident.objects.get().patient, self.patient)
+
+    def test_wearable_sos_is_attributed_to_wearable_and_cannot_claim_simulator_source(self):
+        device = Device.objects.create(
+            device_identifier="NS-SOS-WEAR-001",
+            device_type=Device.Type.WEARABLE,
+            patient=self.patient,
+            status=Device.Status.ACTIVE,
+        )
+        secret = DeviceCredential.issue(device)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Device {device.device_identifier}:{secret}")
+
+        rejected = self.client.post(
+            "/api/v1/incidents/sos/",
+            {"event_id": str(self.event_id), "trigger_source": Incident.Source.SIMULATOR},
+            format="json",
+        )
+        self.assertEqual(rejected.status_code, 400)
+        self.assertEqual(Incident.objects.count(), 0)
+
+        accepted = self.client.post(
+            "/api/v1/incidents/sos/",
+            {"event_id": str(self.event_id), "trigger_source": Incident.Source.WEARABLE},
+            format="json",
+        )
+        self.assertEqual(accepted.status_code, 201)
+        self.assertEqual(accepted.json()["trigger_source"], Incident.Source.WEARABLE)
 
     def test_sos_captures_latest_received_location_snapshot(self):
         recorded_at = timezone.now() - timedelta(minutes=2)

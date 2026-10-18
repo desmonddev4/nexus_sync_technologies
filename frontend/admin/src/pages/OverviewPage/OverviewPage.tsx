@@ -91,9 +91,12 @@ export function OverviewPage() {
 
   // Initial load, then quiet refresh so the control room stays current.
   useEffect(() => {
-    load()
+    const initialLoad = window.setTimeout(() => { void load() }, 0)
     const timer = window.setInterval(() => load(true), REFRESH_MS)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearTimeout(initialLoad)
+      window.clearInterval(timer)
+    }
   }, [load])
 
   const stats = useMemo(() => {

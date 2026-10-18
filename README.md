@@ -37,7 +37,6 @@ The active operator interface is a custom React + TypeScript web dashboard in `f
 React Native remains a separate later phase for patient/responder mobile clients after web dashboard workflows and API contracts stabilize.
 
 ## Frontend admin setup
-
 ```bash
 cd frontend/admin
 npm install
@@ -121,8 +120,10 @@ Application endpoints require authentication except health and token login. The 
 | `GET` | `/api/v1/vehicles/` | List vehicles belonging to verified providers |
 | `GET` | `/api/v1/vehicles/nearby/?latitude={lat}&longitude={lon}` | List fresh, available live vehicles nearest to a location |
 | `POST` | `/api/v1/measurements/` | Ingest one sourced measurement |
+| `GET` | `/api/v1/measurements/review/` | List measurement-quality review queue (clinician/superuser only) |
+| `POST` | `/api/v1/measurements/{id}/review/` | Record one immutable acceptable/questionable quality decision (clinician/superuser only) |
 | `POST` | `/api/v1/locations/` | Ingest one timestamped location |
-| `POST` | `/api/v1/incidents/sos/` | Create an idempotent SOS incident |
+| `POST` | `/api/v1/incidents/sos/` | Create an idempotent SOS incident; device-authenticated calls derive patient and trigger source from device credentials |
 | `GET` | `/api/v1/incidents/` | List visible incidents |
 | `POST` | `/api/v1/incidents/{id}/acknowledge/` | Acknowledge as authorized staff |
 | `POST` | `/api/v1/incidents/{id}/assign-responder/` | Assign an eligible vehicle; simulated vehicles require explicit opt-in |
@@ -140,7 +141,7 @@ Enable Google Routes API and billing for the Google Cloud project, restrict the 
 
 ## Monitoring rules
 
-Monitoring rules are configured in Django admin. No clinical thresholds are seeded. Rules are disabled by default and can be enabled only by a clinician or superuser, which records the reviewer and review time. Measurements begin as `unreviewed`; a clinician must review them in Django admin and mark a reading `acceptable` before it can trigger a rule. Readings older than five minutes are skipped, and simulated readings require explicit opt-in on the rule. Consecutive-reading count and lookback window are configurable. Evaluated rule definitions are immutable; create a new version to change an evaluated rule. Each evaluation records its rule version and reading evidence; repeat triggers link to the active incident rather than creating an incident for every reading. Authorized staff can inspect history at `/api/v1/incidents/{id}/events/`. These rules are alerts, not diagnoses.
+Monitoring rules are configured through the role-protected dashboard APIs. No clinical thresholds are seeded. Rules are disabled by default and can be enabled only by a clinician or superuser, which records the reviewer and review time. Measurements begin as `unreviewed`; clinicians and superusers use the dashboard's Measurement review page to record a one-way quality decision before an acceptable reading can trigger a rule. Readings older than five minutes are skipped, and simulated readings require explicit opt-in on the rule. Consecutive-reading count and lookback window are configurable. Evaluated rule definitions are immutable; create a new version to change an evaluated rule. Each evaluation records its rule version and reading evidence; repeat triggers link to the active incident rather than creating an incident for every reading. Authorized staff can inspect history at `/api/v1/incidents/{id}/events/`. These rules are alerts, not diagnoses.
 
 ## Audit logs
 
@@ -162,7 +163,7 @@ Run backend checks and tests from `backend/`:
 
 ```bash
 python manage.py check
-python manage.py test apps.core apps.accounts apps.patients apps.devices apps.incidents apps.monitoring apps.notifications apps.emergency_services
+python manage.py test apps.core apps.accounts apps.patients apps.devices apps.incidents apps.monitoring apps.notifications apps.emergency_services apps.audit
 ```
 
 The API returns JSON only. The domain apps are being built incrementally, with backend behavior and tests supporting the custom web operations dashboard.
@@ -170,3 +171,30 @@ The API returns JSON only. The domain apps are being built incrementally, with b
 ## Safety and pilot boundary
 
 Initial development uses simulator-generated data. A successful API response, alert, or provider listing is not evidence that an emergency contact received a message or that an ambulance was dispatched. Live health data, patient enrollment, clinical decision support, and real dispatch require appropriate consent, security controls, provider authorization, and supervised validation.
+
+## Authenticated device simulator
+
+A Python simulator is available at [simulator/device_simulator.py](simulator/device_simulator.py). It exercises device-authenticated heartbeat, measurement, location, and SOS endpoints; event IDs make measurement/location/SOS retries idempotent. Failed requests are queued in an ignored local JSONL file and can be retried with `--flush-queue`. The queue can contain precise test coordinates and must remain private.
+
+Set `NEXUS_API_BASE` (defaults to local `http://127.0.0.1:8000/api/v1`), `NEXUS_DEVICE_ID`, and `NEXUS_DEVICE_SECRET` in the shell environment. Obtain a simulator device credential through the trusted credential-issuance command after creating and assigning a simulator device:
+
+```powershell
+cd backend
+python manage.py issue_device_credential NS-SIM-001
+```
+
+Then run non-incident test events from the repository root:
+
+```powershell
+python simulator/device_simulator.py --event heartbeat
+python simulator/device_simulator.py --event measurement
+python simulator/device_simulator.py --event location
+```
+
+SOS creates an incident and queues notifications for eligible contacts; it is not a live dispatch request. Only when intentionally testing an incident, run `python simulator/device_simulator.py --event sos --confirm-sos`. `--event all` also requires `--confirm-sos` because it includes SOS. Use only test accounts/data. Device credentials are printed once by the issuance command; do not paste them in chat, commit them, or put them in shell history. Prefer secure environment injection and rotate/revoke credentials after use.
+
+## Operations map and measurement review
+
+The admin includes an authenticated operations map with incident-time location snapshots, verified facilities, optional verified provider station coordinates, and eligible nearby vehicle positions. OpenStreetMap tiles are loaded by the browser and require network access; attribution is displayed on the map. Simulated vehicles are explicitly labeled and toggleable. The map never geocodes provider addresses or invents missing coordinates. Route geometry and ETA are requested from the server and remain estimates, not dispatch confirmation. Live fleet positions require provider authorization and a fresh eligible vehicle feed.
+
+Clinicians and superusers can review unreviewed measurement quality in the dashboard. Accepting a reading may evaluate enabled monitoring rules; each measurement review is one-way/immutable and audit logged. This workflow is a quality gate, not clinical diagnosis or approval of thresholds.

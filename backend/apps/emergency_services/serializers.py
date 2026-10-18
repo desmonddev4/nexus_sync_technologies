@@ -14,6 +14,8 @@ class EmergencyProviderSerializer(serializers.ModelSerializer):
             "general_phone_number",
             "email",
             "address",
+            "latitude",
+            "longitude",
             "operating_hours",
             "coverage_description",
             "verification_status",

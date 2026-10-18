@@ -10,4 +10,5 @@ node_modules/
 dist/
 build/
 backend/staticfiles/
+simulator/.device-event-queue.jsonl
 .DS_Store

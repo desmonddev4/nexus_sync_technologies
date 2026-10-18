@@ -244,3 +244,33 @@ class MonitoringRuleEvaluationSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+
+class MeasurementQualityReviewSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+
+    class Meta:
+        model = Measurement
+        fields = (
+            "id",
+            "patient",
+            "patient_name",
+            "device",
+            "event_id",
+            "measurement_type",
+            "value",
+            "unit",
+            "source",
+            "quality",
+            "quality_reviewed_by",
+            "quality_reviewed_at",
+            "measured_at",
+            "received_at",
+        )
+        read_only_fields = fields
+
+
+class MeasurementQualityDecisionSerializer(serializers.Serializer):
+    quality = serializers.ChoiceField(
+        choices=(Measurement.Quality.ACCEPTABLE, Measurement.Quality.QUESTIONABLE)
+    )

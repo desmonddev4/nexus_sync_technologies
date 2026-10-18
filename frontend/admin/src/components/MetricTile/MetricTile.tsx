@@ -18,9 +18,11 @@ function useCountUp(target: number, enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      current.current = target
-      setDisplay(target)
-      return
+      const timer = window.setTimeout(() => {
+        current.current = target
+        setDisplay(target)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
     const from = current.current
     const start = performance.now()

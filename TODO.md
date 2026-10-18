@@ -11,6 +11,44 @@ Status reviewed: 2026-10-18
 - [x] Keep every dashboard page and reusable component in its own file/directory, with its own CSS file.
 - [x] Treat React Native as a separate later patient/responder client; do not merge it into the web admin bundle.
 - [x] Keep simulator data clearly distinguished from live provider/device data.
+- [x] Normalize configured frontend API URLs to include `/api/v1`; verified the production token endpoint's preflight for the configured Vercel origin.
+- [x] Add a read-only Leaflet operations map with active incident snapshots, verified directory markers when coordinates exist, eligible nearby vehicles, explicit simulation status, and server-calculated route/ETA geometry.
+- [x] Add clinician/superuser measurement-quality queue and one-way review API, audit records, rule evaluation on acceptance, and dashboard review workflow.
+- [x] Add an authenticated device simulator for heartbeat, measurement, location, and idempotent SOS events, with local retry queue support.
+- [x] Allow active simulator/wearable device credentials to create idempotent SOS incidents with patient and source derived by the backend.
+
+## Specification Roadmap: Remaining Pilot Deliverables
+
+The sections below track the specification's end-to-end milestone. Checked items are implemented in software; they do not imply hardware validation, clinical approval, provider authorization, or a supervised pilot.
+
+### Emergency workflow and operational map
+
+- [x] Backend supports SOS incidents, operator acknowledgement, responder assignment, route estimates, operator-recorded dispatch request/confirmation, status transitions, and incident history.
+- [x] Seed and label a simulated UPSA-area provider/vehicle; require explicit opt-in to include simulated vehicles.
+- [x] Build an interactive operations map showing incident/patient, provider/facility, and eligible vehicle markers with simulation labels.
+- [x] Show patient/vehicle location accuracy and freshness on the map; visibly distinguish missing, stale, simulated, and authorized live locations.
+- [x] Display the selected vehicle's route and ETA in the map workflow, with clear labeling that route calculation is not dispatch confirmation.
+- [ ] Verify UPSA/Madina/East Legon provider directory records, service coverage, facility suitability, contact sources, and last-verification dates directly with providers.
+- [ ] Complete and record the full simulated SOS acceptance path against a running deployment, including contact delivery-state verification, operator action, response tracking, resolution, and closure.
+
+### Device, risk analysis, and authorized integrations
+
+- [x] Implement backend measurement/location ingestion, device authentication and revocation, deduplication, and a disabled-by-default, explainable monitoring-rules framework.
+- [x] Create the device/simulator client that exercises authenticated heartbeat, measurement, location, SOS, retry queue, and reconnection workflows against the API.
+- [ ] Build and validate ESP32 firmware and wearable sensors; preserve a dependable manual SOS path independent of AI or rules.
+- [ ] Add and evaluate fall-candidate detection; do not treat a candidate fall as a diagnosis.
+- [ ] Add AI-assisted trend analysis only after governed, appropriately labelled data and clinical evaluation are available; report uncertainty and require human review.
+- [ ] Obtain provider authorization and document an approved fleet/status integration and dispatch-confirmation procedure before using live vehicle data.
+- [ ] Complete provider-approved notification configuration and controlled delivery tests; distinguish submission, delivery, acknowledgement, and unknown outcomes.
+
+### Safety, privacy, testing, and pilot readiness
+
+- [x] Backend and dashboard communicate simulation and dispatch-confirmation limits; monitoring rules remain disabled by default and require authorized review.
+- [ ] Complete the remaining simulation, failure-mode, role-permission, and end-to-end acceptance scenarios below in a production-like environment.
+- [ ] Complete Ghana legal/privacy and health/medical-device review, pilot consent and data-sharing procedures, retention decisions, and breach response before real participant use.
+- [ ] Obtain clinical review of intended use, measurement quality, thresholds, escalation rules, and fall-detection protocol; validate sensors against appropriate references.
+- [ ] Verify production backups and restoration, operational monitoring/alerts, secret restrictions, and incident-response procedures.
+- [ ] Obtain provider sign-off and conduct a supervised pilot only after all applicable acceptance, safety, security, and operational gates pass.
 
 ## Implemented Backend Foundation
 
@@ -28,7 +66,7 @@ Status reviewed: 2026-10-18
 - [x] Responder assignment, operator-recorded dispatch request/confirmation, vehicle release, and simulation labels.
 - [x] Google Routes adapter, stale-coordinate rejection, route estimate history, and simulated-route labeling.
 - [x] Metadata-only audit logging for patient/incident access and measurement/location ingestion, including object-level denials.
-- [x] Backend system checks, migrations, and 80 automated tests.
+- [x] Backend system checks, migrations, and 129 automated tests (verified with the complete backend test suite on 2026-10-18).
 
 ## Immediate Priority: Custom Admin Dashboard
 
@@ -66,13 +104,14 @@ Status reviewed: 2026-10-18
 - [x] Replace demo/mock content with backend API loading, error, empty, and permission-denied states.
 - [x] Add responsive desktop/tablet layouts and verify text/table behavior at smaller widths.
 - [x] Add frontend tests for login, access control, incident workflows, stale data, and simulated data labeling.
-- [x] Run lint, typecheck, production build, and browser-based end-to-end checks.
+- [x] Run frontend lint, typecheck, production build, and unit/component tests.
+- [ ] Add and run browser-based end-to-end tests against a production-like deployment.
 
 ## Backend Work Remaining
 
 - [x] Add `/api/v1/auth/me/` for custom dashboard identity and operations-access checks.
-- [x] Replace rule management and quality review through Django admin with role-protected APIs used by the custom dashboard.
-- [ ] Add a controlled API for review of measurement quality and rules; enforce clinician/superuser permissions and immutable evaluated versions.
+- [x] Replace monitoring-rule management through Django admin with role-protected APIs used by the custom dashboard; evaluated rule versions are immutable.
+- [x] Add a controlled API for measurement-quality review and expose it in the dashboard; enforce clinician/superuser permissions and audit one-way decisions.
 - [x] Expand audit coverage to authentication failures, user/role changes, rule changes, device credential issuance/revocation, route requests, exports, and administrative actions.
 - [x] Add audit-log retention, export, access-control, and backup policy.
 - [x] Add handling/recovery for notifications left in `processing`, plus operational monitoring for `submission_unknown` outcomes.
@@ -95,10 +134,10 @@ Status reviewed: 2026-10-18
 
 ## Simulation and Acceptance Scenarios
 
-- [ ] Manual SOS to dashboard, contact notification queue, acknowledgement, assignment, route, operator-recorded confirmation, arrival, resolution, and closure.
+- [ ] Run and record manual SOS end-to-end against a test deployment: dashboard, notification delivery-state checks, acknowledgement, assignment, route, operator-recorded confirmation, arrival, resolution, and closure.
 - [ ] Duplicate SOS/measurement/device retries produce no duplicate incidents or notifications.
 - [ ] Missing and stale patient GPS remain visibly missing/stale; the system never substitutes invented coordinates.
-- [ ] Offline device, reconnection, credential revocation, and queued-event behavior.
+- [ ] Run the simulator against a test deployment to verify offline queue flush, reconnection, and credential revocation behavior.
 - [ ] Notification rejection, timeout/unknown outcome, callback replay, out-of-order callbacks, and delivery reconciliation.
 - [ ] Unavailable, stale, unsuitable, unverified, and simulated vehicle selection behavior.
 - [ ] Rule quality rejection, stale reading, threshold miss, consecutive-reading trigger, simulation opt-in, and active-incident linking.

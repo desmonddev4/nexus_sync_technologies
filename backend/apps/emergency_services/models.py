@@ -22,6 +22,20 @@ class EmergencyProvider(UUIDTimestampedModel):
     general_phone_number = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=300, blank=True)
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
     operating_hours = models.JSONField(default=dict, blank=True)
     coverage_description = models.TextField(blank=True)
     verification_status = models.CharField(
@@ -39,6 +53,23 @@ class EmergencyProvider(UUIDTimestampedModel):
 
     class Meta:
         ordering = ("name",)
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(latitude__isnull=True) & Q(longitude__isnull=True))
+                | (Q(latitude__isnull=False) & Q(longitude__isnull=False)),
+                name="provider_coordinates_set_together",
+            ),
+            models.CheckConstraint(
+                condition=Q(latitude__isnull=True)
+                | (Q(latitude__gte=-90) & Q(latitude__lte=90)),
+                name="provider_latitude_in_range",
+            ),
+            models.CheckConstraint(
+                condition=Q(longitude__isnull=True)
+                | (Q(longitude__gte=-180) & Q(longitude__lte=180)),
+                name="provider_longitude_in_range",
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -91,9 +122,6 @@ class HealthcareFacility(UUIDTimestampedModel):
                 name="facility_longitude_in_range",
             ),
         ]
-
-    def __str__(self):
-        return self.name
 
 
 class AmbulanceVehicle(UUIDTimestampedModel):

@@ -478,3 +478,102 @@ class MonitoringRuleManagementApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class MeasurementQualityReviewApiTests(APITestCase):
+    def setUp(self):
+        self.patient = Patient.objects.create(full_name="Quality Review Patient")
+        self.measurement = Measurement.objects.create(
+            patient=self.patient,
+            event_id=uuid.uuid4(),
+            measurement_type=Measurement.Type.HEART_RATE,
+            value="82",
+            unit="bpm",
+            source=Measurement.Source.SIMULATOR,
+            measured_at=timezone.now(),
+        )
+        user_model = get_user_model()
+        self.clinician = user_model.objects.create_user(username="quality-clinician")
+        AccountProfile.objects.create(user=self.clinician, role=AccountProfile.Role.CLINICIAN)
+        self.coordinator = user_model.objects.create_user(username="quality-coordinator")
+        AccountProfile.objects.create(user=self.coordinator, role=AccountProfile.Role.EMERGENCY_COORDINATOR)
+        self.patient_user = user_model.objects.create_user(username="quality-patient")
+        AccountProfile.objects.create(user=self.patient_user, patient=self.patient, role=AccountProfile.Role.PATIENT)
+
+    def test_clinician_can_list_unreviewed_quality_queue(self):
+        self.client.force_authenticate(self.clinician)
+        response = self.client.get("/api/v1/measurements/review/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(response.json()[0]["patient_name"], self.patient.full_name)
+        self.assertEqual(response.json()[0]["quality"], Measurement.Quality.UNREVIEWED)
+
+    def test_coordinator_and_patient_cannot_review_measurements(self):
+        for user in (self.coordinator, self.patient_user):
+            self.client.force_authenticate(user)
+            response = self.client.get("/api/v1/measurements/review/")
+            self.assertEqual(response.status_code, 403)
+
+    def test_clinician_can_accept_measurement_and_decision_is_audited(self):
+        self.client.force_authenticate(self.clinician)
+        response = self.client.post(
+            f"/api/v1/measurements/{self.measurement.pk}/review/",
+            {"quality": Measurement.Quality.ACCEPTABLE},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.measurement.refresh_from_db()
+        self.assertEqual(self.measurement.quality, Measurement.Quality.ACCEPTABLE)
+        self.assertEqual(self.measurement.quality_reviewed_by, self.clinician)
+        self.assertIsNotNone(self.measurement.quality_reviewed_at)
+        audit = AuditLog.objects.get(action="measurement.quality_reviewed")
+        self.assertEqual(audit.actor, self.clinician)
+        self.assertEqual(audit.resource_id, str(self.measurement.pk))
+
+    def test_measurement_review_decision_cannot_be_overwritten(self):
+        self.client.force_authenticate(self.clinician)
+        first = self.client.post(
+            f"/api/v1/measurements/{self.measurement.pk}/review/",
+            {"quality": Measurement.Quality.QUESTIONABLE},
+            format="json",
+        )
+        second = self.client.post(
+            f"/api/v1/measurements/{self.measurement.pk}/review/",
+            {"quality": Measurement.Quality.ACCEPTABLE},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 400)
+        self.measurement.refresh_from_db()
+        self.assertEqual(self.measurement.quality, Measurement.Quality.QUESTIONABLE)
+
+    def test_accepting_measurement_evaluates_enabled_rules(self):
+        rule = MonitoringRule.objects.create(
+            name="Accepted reading check",
+            measurement_type=Measurement.Type.HEART_RATE,
+            operator=MonitoringRule.Operator.GREATER_THAN,
+            threshold="100",
+            priority=MonitoringRule.Priority.HIGH,
+            version="v1",
+            is_enabled=True,
+            reviewed_by=self.clinician,
+            reviewed_at=timezone.now(),
+            include_simulated=True,
+        )
+        self.measurement.value = "120"
+        self.measurement.save(update_fields=("value", "updated_at"))
+        self.client.force_authenticate(self.clinician)
+
+        response = self.client.post(
+            f"/api/v1/measurements/{self.measurement.pk}/review/",
+            {"quality": Measurement.Quality.ACCEPTABLE},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        evaluation = MonitoringRuleEvaluation.objects.get(rule=rule, measurement=self.measurement)
+        self.assertEqual(evaluation.status, MonitoringRuleEvaluation.Status.TRIGGERED)
+        self.assertEqual(evaluation.incident.trigger_source, Incident.Source.RULE)

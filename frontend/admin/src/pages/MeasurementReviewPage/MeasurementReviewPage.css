@@ -1,0 +1,10 @@
+.measurement-review-page { display: grid; gap: 14px; }
+.measurement-review-page .page-heading h1 { margin: 0; color: var(--ink); font: 600 28px var(--display); }
+.measurement-review-refresh { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; padding: 0 11px; color: #fff; background: var(--forest); border: 0; border-radius: 4px; font-size: 11px; }
+.measurement-review-notice { display: flex; align-items: flex-start; gap: 8px; padding: 11px 13px; color: #704814; background: var(--amber-soft); border: 1px solid #f0ddb8; border-radius: 5px; font-size: 11px; line-height: 1.55; }
+.measurement-review-notice svg { flex: 0 0 auto; }
+.measurement-review-table { min-width: 850px; }
+.measurement-review-table td { vertical-align: middle; }
+.measurement-review-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.measurement-review-actions button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 0 8px; color: var(--forest); background: #edf5f1; border: 1px solid #cfe2d8; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.measurement-review-actions button:last-child { color: #8e352b; background: var(--coral-soft); border-color: #efd0ca; }

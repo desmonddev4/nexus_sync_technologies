@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 from apps.accounts.models import AccountProfile
+from apps.devices.models import Device
 
 
 class CanAccessIncidents(BasePermission):
@@ -16,6 +17,8 @@ class CanAccessIncidents(BasePermission):
             return None
 
     def has_permission(self, request, view):
+        if view.action == "sos" and isinstance(request.auth, Device):
+            return request.auth.status == Device.Status.ACTIVE and request.auth.patient_id is not None
         user = request.user
         if not user.is_authenticated:
             return False

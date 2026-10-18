@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
@@ -13,6 +14,9 @@ import { AuditLogsPage } from './pages/AuditLogsPage/AuditLogsPage'
 import { AccountsPage } from './pages/AccountsPage/AccountsPage'
 import { SettingsPage } from './pages/SettingsPage/SettingsPage'
 import { ServicesPage } from './pages/ServicesPage/ServicesPage'
+import { MeasurementReviewPage } from './pages/MeasurementReviewPage/MeasurementReviewPage'
+
+const OperationsMapPage = lazy(() => import('./pages/OperationsMapPage/OperationsMapPage').then((module) => ({ default: module.OperationsMapPage })))
 
 function App() {
   return (
@@ -28,10 +32,12 @@ function App() {
               <Route path="patients" element={<PatientsPage />} />
               <Route path="patients/:patientId" element={<PatientDetailPage />} />
               <Route path="monitoring/rules" element={<MonitoringRulesPage />} />
+              <Route path="monitoring/review" element={<MeasurementReviewPage />} />
               <Route path="audit/logs" element={<AuditLogsPage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="services" element={<ServicesPage />} />
+              <Route path="map" element={<Suspense fallback={<main className="auth-checking">Loading emergency map…</main>}><OperationsMapPage /></Suspense>} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

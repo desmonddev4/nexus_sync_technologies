@@ -2,6 +2,8 @@ from django.urls import path
 
 from .views import (
     MeasurementIngestView,
+    MeasurementQualityQueueView,
+    MeasurementQualityReviewView,
     MonitoringRuleDetailView,
     MonitoringRuleEvaluationsView,
     MonitoringRuleListCreateView,
@@ -12,6 +14,8 @@ from .views import (
 
 urlpatterns = [
     path("measurements/", MeasurementIngestView.as_view(), name="measurement-ingest"),
+    path("measurements/review/", MeasurementQualityQueueView.as_view(), name="measurement-quality-queue"),
+    path("measurements/<uuid:measurement_id>/review/", MeasurementQualityReviewView.as_view(), name="measurement-quality-review"),
     path("locations/", PatientLocationIngestView.as_view(), name="location-ingest"),
     path("monitoring/rules/", MonitoringRuleListCreateView.as_view(), name="monitoring-rule-list"),
     path("monitoring/rules/<uuid:pk>/", MonitoringRuleDetailView.as_view(), name="monitoring-rule-detail"),

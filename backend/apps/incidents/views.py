@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import AccountProfile
 from apps.audit.services import record_audit_event
+from apps.devices.models import Device
 from apps.emergency_services.models import AmbulanceVehicle
 from apps.emergency_services.routing import (
     GoogleRoutesProvider,
@@ -102,7 +103,7 @@ class IncidentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
             patient=serializer.validated_data["patient"],
             event_id=serializer.validated_data["event_id"],
             trigger_source=serializer.validated_data["trigger_source"],
-            actor=request.user,
+            actor=None if isinstance(request.auth, Device) else request.user,
         )
         record_audit_event(
             request=request,

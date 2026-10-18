@@ -11,6 +11,7 @@ import type {
   IncidentEvent,
   IncidentNotification,
   Measurement,
+  MeasurementQualityReview,
   MonitoringRule,
   MonitoringRuleEvaluation,
   NearbyVehicle,
@@ -82,6 +83,15 @@ export function getPatientDevices(id: string) {
 }
 export function getMonitoringRules() {
   return apiRequest<MonitoringRule[]>('monitoring/rules/')
+}
+export function getMeasurementQualityQueue(limit = 50) {
+  return apiRequest<MeasurementQualityReview[]>(`measurements/review/?limit=${limit}`)
+}
+export function reviewMeasurementQuality(measurementId: string, quality: 'acceptable' | 'questionable') {
+  return apiRequest<MeasurementQualityReview>(`measurements/${measurementId}/review/`, {
+    method: 'POST',
+    body: JSON.stringify({ quality }),
+  })
 }
 export function createMonitoringRule(payload: {
   name: string

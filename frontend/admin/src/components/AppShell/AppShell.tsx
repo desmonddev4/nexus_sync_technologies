@@ -4,6 +4,8 @@ import {
   Ambulance,
   ClipboardList,
   LogOut,
+  MapPinned,
+  ClipboardCheck,
   ScrollText,
   Settings2,
   Siren,
@@ -40,12 +42,14 @@ const navigation: NavGroup[] = [
       { to: '/incidents', label: 'Incident queue', icon: ClipboardList },
       { to: '/patients', label: 'Patients', icon: Users },
       { to: '/services', label: 'Emergency services', icon: Ambulance },
+      { to: '/map', label: 'Emergency map', icon: MapPinned },
     ],
   },
   {
     title: 'Safety and administration',
     items: [
       { to: '/monitoring/rules', label: 'Monitoring rules', icon: Siren },
+      { to: '/monitoring/review', label: 'Measurement review', icon: ClipboardCheck },
       { to: '/audit/logs', label: 'Audit logs', icon: ScrollText },
       { to: '/accounts', label: 'Accounts', icon: UserCog },
       { to: '/settings', label: 'Settings', icon: Settings2 },
