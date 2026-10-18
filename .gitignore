@@ -9,4 +9,5 @@ htmlcov/
 node_modules/
 dist/
 build/
+backend/staticfiles/
 .DS_Store
