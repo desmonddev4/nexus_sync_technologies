@@ -74,7 +74,7 @@ Use these Render settings for the Django web service:
 - environment variables: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DB_ENGINE=postgresql`, and the `DB_*` values for Render Postgres
 - optional frontend origin allowlist: `CORS_ALLOWED_ORIGINS=https://YOUR_FRONTEND_DOMAIN`
 
-For the Vercel frontend, set `VITE_API_BASE_URL` to the deployed backend base URL, for example `https://YOUR_RENDER_BACKEND/api/v1`. If you do not set it, the app will use a same-origin `/api/v1` path, which only works when the frontend is served from the same host or through a proxy.
+For the Vercel frontend, set the project's Root Directory to `frontend/admin` (Vite is auto-detected; `frontend/admin/vercel.json` adds the SPA rewrite). Set `VITE_API_BASE_URL` to the deployed backend base URL, for example `https://YOUR_RENDER_BACKEND/api/v1`. If you do not set it, the app will use a same-origin `/api/v1` path, which only works when the frontend is served from the same host or through a proxy.
 
 Register a device in Django admin, assign it to a patient, and set it to active before issuing credentials. The credential is printed once and stored on the server only as a digest:
 
