@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "buildCommand": "if [ -f package.json ]; then npm run build && rm -rf dist-root && mkdir -p dist-root && cp -R dist/. dist-root/; elif [ -f admin/package.json ]; then cd admin && npm run build && rm -rf ../dist-root && mkdir -p ../dist-root && cp -R dist/. ../dist-root/; elif [ -f frontend/admin/package.json ]; then cd frontend/admin && npm run build && rm -rf ../../dist-root && mkdir -p ../../dist-root && cp -R dist/. ../../dist-root/; else echo 'No frontend package.json found for build' && exit 1; fi",
+  "outputDirectory": "dist-root",
+  "installCommand": "if [ -f package.json ]; then npm install; elif [ -f admin/package.json ]; then cd admin && npm install; elif [ -f frontend/admin/package.json ]; then cd frontend/admin && npm install; else echo 'No frontend package.json found for install' && exit 1; fi",
   "framework": null
 }
