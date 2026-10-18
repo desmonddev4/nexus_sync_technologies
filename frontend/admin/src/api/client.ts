@@ -1,7 +1,18 @@
 const DEFAULT_API_BASE_URL = import.meta.env.PROD
   ? 'https://nexus-sync-backend.onrender.com/api/v1'
   : '/api/v1'
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
+export function normalizeApiBaseUrl(value: string) {
+  const baseUrl = value.replace(/\/+$/, '')
+  if (!/^https?:\/\//i.test(baseUrl)) return baseUrl || '/api/v1'
+
+  const url = new URL(baseUrl)
+  const path = url.pathname.replace(/\/+$/, '')
+  if (!path || path === '/') url.pathname = '/api/v1'
+  else if (path !== '/api/v1' && !path.endsWith('/api/v1')) url.pathname = `${path}/api/v1`
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL)
 const AUTH_STORAGE_KEY = 'nexus-sync-operations-token'
 let authToken = readStoredToken()
 
