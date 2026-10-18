@@ -66,7 +66,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Responder assignment, operator-recorded dispatch request/confirmation, vehicle release, and simulation labels.
 - [x] Google Routes adapter, stale-coordinate rejection, route estimate history, and simulated-route labeling.
 - [x] Metadata-only audit logging for patient/incident access and measurement/location ingestion, including object-level denials.
-- [x] Backend system checks, migrations, and 129 automated tests (verified with the complete backend test suite on 2026-10-18).
+- [x] Backend system checks, migrations, and 131 automated tests (verified with the complete backend test suite on 2026-10-18).
 
 ## Immediate Priority: Custom Admin Dashboard
 
@@ -118,7 +118,8 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Add retry/escalation scheduling and a documented operator workflow for failed/unconfirmed notifications.
 - [x] Add provider integration adapters only after a provider authorizes an API or fleet feed; preserve explicit operator confirmation meanwhile.
 - [x] Add data-retention/deletion workflows and access-request procedures for patient data.
-- [ ] Review database transaction/locking behavior under concurrent duplicate device events and competing vehicle assignment.
+- [x] Lock incident and vehicle rows for responder assignment; enforce one current vehicle per incident at the database layer and test reassignment/duplicate-link rejection.
+- [ ] Exercise concurrent duplicate-device requests and competing vehicle assignment against PostgreSQL under production-like conditions.
 
 ## Integrations and Operational Readiness
 

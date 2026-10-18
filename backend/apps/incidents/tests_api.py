@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_datetime
 from rest_framework.test import APITestCase
 from django.utils import timezone
@@ -434,6 +435,45 @@ class SOSApiTests(APITestCase):
         self.assertEqual(rejected.status_code, 400)
         self.assertEqual(accepted.status_code, 200)
         self.assertTrue(accepted.json()["is_simulated_dispatch"])
+
+    def test_reassignment_releases_the_previous_vehicle(self):
+        incident = self.create_acknowledged_incident()
+        first_vehicle = self.create_vehicle(vehicle_identifier="NS-ASSIGN-101")
+        second_vehicle = self.create_vehicle(vehicle_identifier="NS-ASSIGN-102")
+        self.client.force_authenticate(self.coordinator)
+
+        first_assignment = self.client.post(
+            f"/api/v1/incidents/{incident.pk}/assign-responder/",
+            {"vehicle": str(first_vehicle.pk)},
+            format="json",
+        )
+        replacement = self.client.post(
+            f"/api/v1/incidents/{incident.pk}/assign-responder/",
+            {"vehicle": str(second_vehicle.pk)},
+            format="json",
+        )
+
+        self.assertEqual(first_assignment.status_code, 200)
+        self.assertEqual(replacement.status_code, 200)
+        self.assertEqual(replacement.json()["assigned_vehicle"], str(second_vehicle.pk))
+        first_vehicle.refresh_from_db()
+        second_vehicle.refresh_from_db()
+        self.assertIsNone(first_vehicle.current_incident_id)
+        self.assertEqual(first_vehicle.availability, AmbulanceVehicle.Availability.AVAILABLE)
+        self.assertEqual(second_vehicle.current_incident_id, incident.pk)
+        self.assertEqual(second_vehicle.availability, AmbulanceVehicle.Availability.ON_CALL)
+
+    def test_database_rejects_multiple_vehicles_linked_to_one_incident(self):
+        incident = self.create_acknowledged_incident()
+        first_vehicle = self.create_vehicle(vehicle_identifier="NS-UNIQUE-101")
+        second_vehicle = self.create_vehicle(vehicle_identifier="NS-UNIQUE-102")
+        first_vehicle.current_incident = incident
+        first_vehicle.save(update_fields=("current_incident", "updated_at"))
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                second_vehicle.current_incident = incident
+                second_vehicle.save(update_fields=("current_incident", "updated_at"))
 
     def test_stale_vehicle_cannot_be_assigned(self):
         incident = self.create_acknowledged_incident()

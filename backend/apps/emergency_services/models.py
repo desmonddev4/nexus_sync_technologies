@@ -179,6 +179,11 @@ class AmbulanceVehicle(UUIDTimestampedModel):
                 fields=("provider", "vehicle_identifier"),
                 name="uniq_provider_vehicle_identifier",
             ),
+            models.UniqueConstraint(
+                fields=("current_incident",),
+                condition=Q(current_incident__isnull=False),
+                name="uniq_vehicle_current_incident",
+            ),
             models.CheckConstraint(
                 condition=(Q(latitude__isnull=True) & Q(longitude__isnull=True))
                 | (Q(latitude__isnull=False) & Q(longitude__isnull=False)),

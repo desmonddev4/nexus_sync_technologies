@@ -151,11 +151,19 @@ def transition_incident(*, incident, new_status, actor):
 @transaction.atomic
 def assign_responder(*, incident, vehicle, actor, include_simulated=False):
     incident = Incident.objects.select_for_update().get(pk=incident.pk)
-    vehicle = (
+    vehicle_ids = {vehicle.pk}
+    if incident.assigned_vehicle_id:
+        vehicle_ids.add(incident.assigned_vehicle_id)
+    locked_vehicles = (
         AmbulanceVehicle.objects.select_for_update()
         .select_related("provider")
-        .get(pk=vehicle.pk)
+        .filter(pk__in=vehicle_ids)
+        .order_by("pk")
     )
+    vehicles_by_id = {locked_vehicle.pk: locked_vehicle for locked_vehicle in locked_vehicles}
+    vehicle = vehicles_by_id.get(vehicle.pk)
+    if vehicle is None:
+        raise InvalidResponderAssignment("The selected vehicle no longer exists.")
     if incident.status not in (Incident.Status.ACKNOWLEDGED, Incident.Status.RESPONDER_ASSIGNED):
         raise InvalidIncidentTransition("Acknowledge the incident before assigning a responder.")
     if vehicle.availability != AmbulanceVehicle.Availability.AVAILABLE:
@@ -183,7 +191,7 @@ def assign_responder(*, incident, vehicle, actor, include_simulated=False):
 
     previous_vehicle = incident.assigned_vehicle
     if previous_vehicle and previous_vehicle.pk != vehicle.pk:
-        release_assigned_vehicle(incident)
+        release_assigned_vehicle(incident, vehicle=vehicles_by_id.get(previous_vehicle.pk))
 
     previous_status = incident.status
     incident.assigned_vehicle = vehicle
@@ -270,10 +278,19 @@ def record_dispatch_confirmation(*, incident, actor, confirmation_reference):
     return incident
 
 
-def release_assigned_vehicle(incident):
+def release_assigned_vehicle(incident, *, vehicle=None):
     if not incident.assigned_vehicle_id:
         return
-    vehicle = incident.assigned_vehicle
+    vehicle = vehicle or (
+        AmbulanceVehicle.objects.select_for_update()
+        .filter(pk=incident.assigned_vehicle_id)
+        .first()
+    )
+    if vehicle is None:
+        incident.assigned_vehicle = None
+        incident.assigned_operator = None
+        incident.save(update_fields=("assigned_vehicle", "assigned_operator", "updated_at"))
+        return
     vehicle.current_incident = None
     if vehicle.availability == AmbulanceVehicle.Availability.ON_CALL:
         vehicle.availability = AmbulanceVehicle.Availability.AVAILABLE
