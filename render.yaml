@@ -1,6 +1,6 @@
 databases:
   - name: nexus-sync-db
-    plan: free
+    plan: starter
     databaseName: nexus_sync
     user: nexus_sync
 

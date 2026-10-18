@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd frontend/admin && npm run build",
+  "buildCommand": "if [ -f package.json ]; then npm install && npm run build && mkdir -p frontend/admin && cp -R dist frontend/admin/dist; else cd frontend/admin && npm install && npm run build; fi",
   "outputDirectory": "frontend/admin/dist",
-  "installCommand": "cd frontend/admin && npm install",
+  "installCommand": "if [ -f package.json ]; then npm install; else cd frontend/admin && npm install; fi",
   "framework": null
 }
