@@ -9,8 +9,7 @@ services:
     name: nexus-sync-backend
     env: python
     plan: free
-    buildCommand: pip install -r backend/requirements.txt && cd backend && python manage.py collectstatic --noinput
-    preDeployCommand: cd backend && python manage.py migrate --noinput
+    buildCommand: pip install -r backend/requirements.txt && cd backend && python manage.py migrate --noinput && python manage.py collectstatic --noinput
     startCommand: cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: DJANGO_SETTINGS_MODULE
