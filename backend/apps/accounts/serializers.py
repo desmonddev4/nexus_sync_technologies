@@ -50,6 +50,8 @@ class AccountAdminSerializer(serializers.ModelSerializer):
 
         if self.instance is None and not attrs.get("password"):
             raise serializers.ValidationError({"password": "Password is required when creating an account."})
+        if (self.instance is None or current_profile is None) and not attrs.get("role"):
+            raise serializers.ValidationError({"role": "An explicit role is required when creating or provisioning an account."})
         return attrs
 
     def to_representation(self, instance):
@@ -70,7 +72,7 @@ class AccountAdminSerializer(serializers.ModelSerializer):
         user = user_model.objects.create_user(password=password, **validated_data)
         AccountProfile.objects.create(
             user=user,
-            role=role or AccountProfile.Role.EMERGENCY_COORDINATOR,
+            role=role,
             phone_number=phone_number,
             patient=patient,
         )
@@ -79,6 +81,7 @@ class AccountAdminSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         role = validated_data.pop("role", None)
         phone_number = validated_data.pop("phone_number", None)
+        patient_provided = "patient" in validated_data
         patient = validated_data.pop("patient", None)
         password = validated_data.pop("password", None)
 
@@ -88,17 +91,19 @@ class AccountAdminSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
 
-        profile, _ = AccountProfile.objects.get_or_create(
-            user=instance,
-            defaults={"role": role or AccountProfile.Role.EMERGENCY_COORDINATOR},
-        )
+        profile = getattr(instance, "profile", None)
+        if profile is None:
+            profile = AccountProfile(user=instance, role=role)
         if role is not None:
             profile.role = role
         if phone_number is not None:
             profile.phone_number = phone_number
         if role == AccountProfile.Role.PATIENT:
-            profile.patient = patient
+            if patient_provided:
+                profile.patient = patient
         elif role is not None:
             profile.patient = None
+        elif patient_provided:
+            profile.patient = patient
         profile.save()
         return instance

@@ -116,6 +116,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Replace monitoring-rule management through Django admin with role-protected APIs used by the custom dashboard; evaluated rule versions are immutable.
 - [x] Add a controlled API for measurement-quality review and expose it in the dashboard; enforce clinician/superuser permissions and audit one-way decisions.
 - [x] Add role-protected patient, device-registry, and emergency-directory provisioning APIs; require explicit verification sources and prevent directory verification from granting fleet-feed authorization.
+- [x] Require explicit account roles at creation and when provisioning legacy accounts without profiles; prevent implicit coordinator-role assignment and test partial patient-link updates.
 - [x] Expand audit coverage to authentication failures, user/role changes, rule changes, device credential issuance/revocation, route requests, exports, and administrative actions.
 - [x] Add audit-log retention, export, access-control, and backup policy.
 - [x] Add handling/recovery for notifications left in `processing`, plus operational monitoring for `submission_unknown` outcomes.

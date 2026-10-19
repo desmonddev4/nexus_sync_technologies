@@ -159,6 +159,55 @@ class AccountManagementApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("patient", response.json())
 
+    def test_account_creation_requires_explicit_role(self):
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.post(
+            "/api/v1/accounts/",
+            {
+                "username": "role-required",
+                "password": "safe-password-123",
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("role", response.json())
+        self.assertFalse(get_user_model().objects.filter(username="role-required").exists())
+
+    def test_profileless_account_update_requires_role_and_does_not_grant_coordinator(self):
+        legacy_user = get_user_model().objects.create_user(username="legacy-no-profile")
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.patch(
+            f"/api/v1/accounts/{legacy_user.pk}/",
+            {"email": "legacy@nexus.test"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("role", response.json())
+        self.assertFalse(AccountProfile.objects.filter(user=legacy_user).exists())
+
+    def test_partial_patient_link_update_preserves_existing_role_and_patient(self):
+        first_patient = Patient.objects.create(full_name="First Linked Patient")
+        second_patient = Patient.objects.create(full_name="Second Linked Patient")
+        self.patient_user.profile.patient = first_patient
+        self.patient_user.profile.save(update_fields=("patient", "updated_at"))
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.patch(
+            f"/api/v1/accounts/{self.patient_user.pk}/",
+            {"patient": str(second_patient.pk)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.patient_user.profile.refresh_from_db()
+        self.assertEqual(self.patient_user.profile.role, AccountProfile.Role.PATIENT)
+        self.assertEqual(self.patient_user.profile.patient_id, second_patient.pk)
+
     def test_coordinator_can_update_role_and_patient_link(self):
         patient = Patient.objects.create(full_name="Linked Patient")
         self.client.force_authenticate(self.coordinator)
