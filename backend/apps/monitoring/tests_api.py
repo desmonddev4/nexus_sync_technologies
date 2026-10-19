@@ -190,6 +190,18 @@ class MonitoringIngestApiTests(APITestCase):
         self.assertEqual(evaluation.status, MonitoringRuleEvaluation.Status.STALE_READING)
         self.assertEqual(Incident.objects.count(), 0)
 
+    def test_measurement_below_rule_threshold_is_recorded_as_no_match(self):
+        rule = self.create_reviewed_rule()
+        measurement = self.create_acceptable_measurement(value="82")
+
+        evaluation = evaluate_measurement_against_rule(measurement=measurement, rule_id=rule.pk)
+
+        self.assertEqual(evaluation.status, MonitoringRuleEvaluation.Status.NO_MATCH)
+        self.assertEqual(evaluation.details["threshold"], "100.00")
+        self.assertEqual(evaluation.details["consecutive_readings_found"], 1)
+        self.assertIsNone(evaluation.incident_id)
+        self.assertEqual(Incident.objects.count(), 0)
+
     def test_patient_cannot_submit_measurement_for_another_patient(self):
         response = self.client.post(
             "/api/v1/measurements/",

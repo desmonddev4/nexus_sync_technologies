@@ -1,0 +1,1041 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&display=swap');
+
+/* ==========================================================================
+   WearableDemoPage.css
+   Flat surfaces, hard offset shadows, one dark stage for the band.
+
+   Contents
+   01. Tokens & page
+   02. Header
+   03. Stage (band + SOS)
+   04. Band motion & hotspots
+   05. Telemetry cards
+   06. Lower panels (map, actions, events)
+   07. Status strip
+   08. Keyframes
+   09. Responsive
+   10. Reduced motion
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   01. Tokens & page
+   -------------------------------------------------------------------------- */
+.wd-page {
+  --ink: #0b1030;
+  --ink-2: #141c4d;
+  --title: #0e1433;
+  --muted: #6a76a5;
+  --rule: #dde2f2;
+  --blue: #2457f5;
+  --cyan: #3fd8ff;
+  --violet: #8a44f0;
+  --green: #12a074;
+  --coral: #e8384f;
+  --amber: #e0900f;
+  --display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+  --body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  padding: 4px 0 16px;
+  color: var(--title);
+  font-family: var(--body);
+}
+
+.wd-page h1,
+.wd-page h2,
+.wd-page p,
+.wd-page ol {
+  margin: 0;
+}
+
+.wd-page button {
+  font-family: inherit;
+}
+
+.wd-page :focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   02. Header
+   -------------------------------------------------------------------------- */
+.wd-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+
+.wd-header h1 {
+  font: 800 clamp(2rem, 3.4vw, 2.9rem) / 1 var(--display);
+  letter-spacing: -0.035em;
+}
+
+.wd-header__title p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.wd-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wd-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: #3a4676;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.wd-tag i,
+.wd-live i {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 2px;
+  animation: wd-led 1.6s steps(1, end) infinite;
+}
+
+.wd-tag--online {
+  color: #0d6b4b;
+  background: #e5f6ee;
+  border-color: #a6dcc4;
+}
+
+.wd-tag--outline {
+  background: transparent;
+  border-style: dashed;
+}
+
+/* --------------------------------------------------------------------------
+   03. Stage
+   -------------------------------------------------------------------------- */
+.wd-stage {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  overflow: hidden;
+  background: var(--ink);
+  border-radius: 18px;
+}
+
+.wd-stage__visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 24px 20px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.wd-device-name {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: #c5cdf0;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+}
+
+.wd-stage__hint {
+  color: #8f9bd0;
+  font-size: 12.5px;
+}
+
+/* SOS column */
+.wd-stage__sos {
+  --accent: var(--green);
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  padding: 32px 34px;
+  background: #fff;
+}
+
+.wd-stage__sos[data-mode='Queued'] { --accent: var(--amber); }
+.wd-stage__sos[data-mode='Triggered'] { --accent: var(--coral); }
+
+.wd-sos__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wd-sos__label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wd-sos__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+}
+
+.wd-sos__state i {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.wd-sos__state[data-mode='Queued'] i { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.wd-sos__state[data-mode='Triggered'] i {
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  animation: wd-led 0.8s steps(1, end) infinite;
+}
+
+.wd-stage__sos h2 {
+  font: 800 clamp(1.5rem, 2.2vw, 2rem) / 1.1 var(--display);
+  letter-spacing: -0.025em;
+}
+
+.wd-stage__sos > p {
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+/* Progress track: Standby, Queued, Triggered */
+.wd-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 6px 0 4px;
+  list-style: none;
+}
+
+.wd-steps li {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  color: #9aa4cb;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.wd-steps li span {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 2px solid var(--rule);
+  border-radius: 5px;
+  transition: background 0.3s, border-color 0.3s, transform 0.35s var(--spring);
+}
+
+.wd-steps li:not(:last-child)::after {
+  position: absolute;
+  top: 7px;
+  left: 20px;
+  right: 4px;
+  height: 2px;
+  background: var(--rule);
+  content: '';
+}
+
+.wd-steps li.is-done { color: var(--title); }
+.wd-steps li.is-done span { background: var(--accent); border-color: var(--accent); }
+.wd-steps li[data-current='true'] span { transform: scale(1.2) rotate(8deg); }
+.wd-steps li.is-done:not(:last-child)::after { background: var(--accent); }
+
+/* Big SOS button */
+.wd-sos__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 62px;
+  margin-top: 6px;
+  color: #fff;
+  font: 800 18px / 1 var(--display);
+  letter-spacing: 0.01em;
+  background: var(--coral);
+  border: 1px solid #a3182e;
+  border-radius: 12px;
+  box-shadow: 0 5px 0 #a3182e;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), background 0.2s;
+}
+
+.wd-sos__button:hover {
+  box-shadow: 0 7px 0 #a3182e;
+  transform: translateY(-2px);
+}
+
+.wd-sos__button:hover svg {
+  animation: wd-wiggle 0.5s ease-in-out;
+}
+
+.wd-sos__button:active {
+  box-shadow: 0 1px 0 #a3182e;
+  transform: translateY(4px);
+}
+
+.wd-sos__button--reset {
+  color: var(--title);
+  background: #fff;
+  border-color: #c3cbe3;
+  box-shadow: 0 5px 0 #c3cbe3;
+}
+
+.wd-sos__button--reset:hover {
+  border-color: var(--blue);
+  box-shadow: 0 7px 0 var(--blue);
+}
+
+.wd-sos__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: 0 5px 0 #c3cbe3;
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   04. Band motion & hotspots
+   -------------------------------------------------------------------------- */
+.wd-band {
+  --led: #2fe39b;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+
+  position: relative;
+  width: min(78%, 380px);
+  aspect-ratio: 500 / 560;
+  margin-top: 4px;
+  perspective: 900px;
+}
+
+.wd-band[data-mode='Queued'] { --led: #ffb13b; }
+.wd-band[data-mode='Triggered'] { --led: #ff4d63; }
+
+/* tilt (transform) is separate from the entrance (scale/rotate) and the idle float (translate) */
+.wd-band__float {
+  position: absolute;
+  inset: 0;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 0.25s var(--ease);
+  animation: wd-enter 0.9s var(--ease) both, wd-float 7s ease-in-out 0.9s infinite;
+}
+
+.wd-band__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wd-band__led {
+  fill: var(--led);
+  transition: fill 0.3s;
+}
+
+.wd-band[data-mode='Triggered'] .wd-band__led {
+  animation: wd-led 0.8s steps(1, end) infinite;
+}
+
+/* optical sensor blinks at the current heart rate */
+.wd-band__optic {
+  fill: #1fbf86;
+  animation: wd-beat var(--beat, 0.85s) ease-in-out infinite;
+}
+
+/* Hotspots: small dots on the band, details on hover or focus */
+.wd-hot {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  animation: wd-pop 0.5s var(--spring) both;
+}
+
+.wd-hot--light  { left: 42%;   top: 25.8%; animation-delay: 0.7s; }
+.wd-hot--sensor { left: 37.7%; top: 65.8%; animation-delay: 0.8s; }
+.wd-hot--strap  { left: 22%;   top: 46%;   animation-delay: 0.9s; }
+.wd-hot--buckle { left: 80.8%; top: 9.6%;  animation-delay: 1s; }
+
+.wd-hot__dot {
+  position: absolute;
+  inset: 9px;
+  background: #fff;
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  transition: transform 0.25s var(--spring), background 0.2s;
+}
+
+.wd-hot__dot::after {
+  position: absolute;
+  inset: -6px;
+  border: 1.5px solid var(--cyan);
+  border-radius: 50%;
+  content: '';
+  animation: wd-ring 2.6s ease-out infinite;
+}
+
+.wd-hot:hover .wd-hot__dot,
+.wd-hot:focus-visible .wd-hot__dot {
+  background: var(--cyan);
+  transform: scale(1.3);
+}
+
+.wd-hot__tip {
+  position: absolute;
+  top: 50%;
+  left: 38px;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: 190px;
+  padding: 9px 12px;
+  color: var(--title);
+  text-align: left;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 3px 3px 0 var(--cyan);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-6px, -50%);
+  transition: opacity 0.2s, transform 0.25s var(--ease);
+}
+
+.wd-hot__tip--left {
+  right: 38px;
+  left: auto;
+  transform: translate(6px, -50%);
+}
+
+.wd-hot__tip strong { font-size: 13px; }
+.wd-hot__tip small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.wd-hot:hover .wd-hot__tip,
+.wd-hot:focus-visible .wd-hot__tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* --------------------------------------------------------------------------
+   05. Telemetry cards
+   -------------------------------------------------------------------------- */
+.wd-metrics {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.wd-card {
+  --tone: var(--blue);
+  --tone-rgb: 36, 87, 245;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px 14px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+
+.wd-card--hr      { --tone: var(--coral);  --tone-rgb: 232, 56, 79; }
+.wd-card--spo2    { --tone: var(--blue);   --tone-rgb: 36, 87, 245; }
+.wd-card--battery { --tone: var(--green);  --tone-rgb: 18, 160, 116; }
+.wd-card--signal  { --tone: var(--violet); --tone-rgb: 138, 68, 240; }
+
+.wd-card:hover {
+  border-color: var(--tone);
+  box-shadow: 4px 4px 0 var(--tone);
+  transform: translate(-2px, -3px);
+}
+
+.wd-card > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wd-card h2 {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wd-card__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--tone);
+  background: #fff;
+  border: 1.5px solid var(--tone);
+  border-radius: 9px;
+  transition: background 0.2s, color 0.2s, rotate 0.35s var(--spring);
+}
+
+.wd-card:hover .wd-card__icon {
+  color: #fff;
+  background: var(--tone);
+  rotate: -7deg;
+}
+
+.wd-card--hr .wd-card__icon { animation: wd-heart 0.85s ease-in-out infinite; }
+.wd-card__icon.is-charging svg { animation: wd-led 1s steps(1, end) infinite; }
+
+.wd-card__badge {
+  padding: 3px 9px;
+  color: var(--tone);
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(var(--tone-rgb), 0.1);
+  border: 1px solid rgba(var(--tone-rgb), 0.3);
+  border-radius: 6px;
+}
+
+.wd-card__value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.wd-card__value strong {
+  font: 800 40px / 1 var(--display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wd-card--hr .wd-card__value strong { font-size: 52px; }
+
+.wd-card__value span {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.wd-card > footer {
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  border-top: 1px dashed var(--rule);
+}
+
+/* Heart rate trace */
+.wd-spark {
+  position: relative;
+  height: 64px;
+}
+
+.wd-spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wd-spark__area { fill: rgba(var(--tone-rgb), 0.1); }
+
+.wd-spark__line {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.wd-spark__dot {
+  position: absolute;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px -5px 0 0;
+  background: var(--tone);
+  border-radius: 50%;
+  transition: top 0.6s var(--ease);
+}
+
+.wd-spark__dot::after {
+  position: absolute;
+  inset: -5px;
+  border: 1.5px solid var(--tone);
+  border-radius: 50%;
+  content: '';
+  animation: wd-ring 1.8s ease-out infinite;
+}
+
+/* Blood oxygen gauge */
+.wd-gauge {
+  position: relative;
+  width: 100%;
+  max-width: 190px;
+  margin: 2px auto 0;
+}
+
+.wd-gauge svg { display: block; width: 100%; }
+
+.wd-gauge__track,
+.wd-gauge__fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.wd-gauge__track { stroke: #e6eaf6; }
+.wd-gauge__fill { stroke: var(--tone); transition: stroke-dasharray 0.8s var(--ease); }
+
+.wd-gauge__value {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  justify-content: center;
+}
+
+.wd-gauge__value strong { font-size: 32px; }
+
+/* Battery cells */
+.wd-cells {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  height: 28px;
+  margin-top: 4px;
+}
+
+.wd-cells i {
+  background: #e6eaf6;
+  border-radius: 3px;
+  transition: background 0.3s;
+}
+
+.wd-cells i.is-on { background: var(--tone); }
+.wd-cells.is-charging i.is-on + i:not(.is-on) { animation: wd-led 1s steps(1, end) infinite; background: rgba(var(--tone-rgb), 0.45); }
+
+/* Signal bars */
+.wd-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 46px;
+  margin-top: 4px;
+}
+
+.wd-bars i {
+  flex: 1;
+  background: #e6eaf6;
+  border-radius: 3px;
+  transition: background 0.3s;
+}
+
+.wd-bars i.is-on { background: var(--tone); }
+
+/* --------------------------------------------------------------------------
+   06. Lower panels
+   -------------------------------------------------------------------------- */
+.wd-lower {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.1fr;
+  gap: 16px;
+}
+
+.wd-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+}
+
+.wd-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wd-panel__head h2 {
+  font: 700 17px / 1.2 var(--display);
+  letter-spacing: -0.01em;
+}
+
+.wd-coords,
+.wd-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  color: #1a4fc0;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: #eef2fe;
+  border-radius: 8px;
+}
+
+.wd-live { color: #0d6b4b; background: #e5f6ee; }
+
+/* Map */
+.wd-map {
+  position: relative;
+  flex: 1;
+  min-height: 230px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.wd-map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.wd-map__pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--blue);
+  translate: -50% -100%;
+  transition: left 0.9s var(--ease), top 0.9s var(--ease);
+}
+
+.wd-map__pin svg {
+  position: static;
+  width: 26px;
+  height: 26px;
+  fill: #fff;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 2px 0 rgba(11, 16, 48, 0.25));
+}
+
+.wd-map__pin i {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 34px;
+  height: 12px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  translate: -50% 0;
+  animation: wd-ground 2.2s ease-out infinite;
+}
+
+.wd-map__trail {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 2px dashed #8f9bd0;
+  border-radius: 50%;
+  translate: -50% -50%;
+}
+
+/* Action buttons */
+.wd-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.wd-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--title);
+  text-align: left;
+  background: #fff;
+  border: 1px solid #c3cbe3;
+  border-radius: 10px;
+  box-shadow: 0 3px 0 #c3cbe3;
+  cursor: pointer;
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), border-color 0.2s, color 0.2s;
+}
+
+/* colour wipes in from the left on hover */
+.wd-action::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  content: '';
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease);
+}
+
+.wd-action:hover {
+  color: #fff;
+  border-color: var(--ink);
+  box-shadow: 0 4px 0 #000;
+  transform: translateY(-1px);
+}
+
+.wd-action:hover::before { transform: scaleX(1); }
+
+.wd-action:active {
+  box-shadow: 0 1px 0 #000;
+  transform: translateY(2px);
+}
+
+.wd-action__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  color: var(--blue);
+  background: #eef2fe;
+  border-radius: 9px;
+  transition: background 0.2s, color 0.2s, transform 0.35s var(--spring);
+}
+
+.wd-action:hover .wd-action__icon {
+  color: var(--ink);
+  background: var(--cyan);
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.wd-action__text { display: grid; gap: 2px; }
+.wd-action__text strong { font-size: 13.5px; font-weight: 700; }
+.wd-action__text small { color: var(--muted); font-size: 12px; transition: color 0.2s; }
+.wd-action:hover .wd-action__text small { color: #aab5e4; }
+
+/* working state: a progress line fills along the bottom */
+.wd-action::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--cyan);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.wd-action.is-busy { pointer-events: none; }
+.wd-action.is-busy::after { opacity: 1; animation: wd-load 0.9s linear forwards; }
+
+/* Event timeline */
+.wd-timeline {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.wd-timeline::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 8px;
+  width: 2px;
+  background: var(--rule);
+  content: '';
+}
+
+.wd-timeline__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 9px 0;
+  animation: wd-slide 0.4s var(--ease) both;
+}
+
+.wd-timeline__item strong { display: block; font-size: 13.5px; }
+.wd-timeline__item small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.wd-timeline__item time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* shape-coded markers, same language as the status badges */
+.wd-timeline__marker {
+  width: 12px;
+  height: 12px;
+  margin: 3px 0 0 3px;
+  background: var(--green);
+  border-radius: 50%;
+}
+
+.wd-timeline__item--info .wd-timeline__marker {
+  background: #fff;
+  border: 2.5px solid var(--blue);
+}
+
+.wd-timeline__item--warn .wd-timeline__marker {
+  background: var(--amber);
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.wd-timeline__item--danger .wd-timeline__marker {
+  background: var(--coral);
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+/* --------------------------------------------------------------------------
+   07. Status strip
+   -------------------------------------------------------------------------- */
+.wd-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wd-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: #425391;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   08. Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes wd-led {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.25; }
+}
+
+@keyframes wd-beat {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+
+@keyframes wd-heart {
+  0%, 100% { scale: 1; }
+  15%      { scale: 1.2; }
+  30%      { scale: 1; }
+}
+
+@keyframes wd-enter {
+  from { opacity: 0; scale: 0.92; rotate: -4deg; }
+  to   { opacity: 1; scale: 1; rotate: 0deg; }
+}
+
+@keyframes wd-float {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -8px; }
+}
+
+@keyframes wd-pop {
+  from { opacity: 0; scale: 0.3; }
+  to   { opacity: 1; scale: 1; }
+}
+
+@keyframes wd-ring {
+  from { opacity: 0.8; transform: scale(0.7); }
+  to   { opacity: 0; transform: scale(1.8); }
+}
+
+@keyframes wd-ground {
+  from { opacity: 0.8; scale: 0.5 0.5; }
+  to   { opacity: 0; scale: 1.6 1.6; }
+}
+
+@keyframes wd-wiggle {
+  0%, 100% { rotate: 0deg; }
+  25%      { rotate: -14deg; }
+  75%      { rotate: 14deg; }
+}
+
+@keyframes wd-load {
+  to { transform: scaleX(1); }
+}
+
+@keyframes wd-slide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* --------------------------------------------------------------------------
+   09. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  .wd-stage { grid-template-columns: 1fr; }
+  .wd-stage__sos { padding: 26px 24px 30px; }
+
+  .wd-metrics { grid-template-columns: repeat(2, 1fr); }
+  .wd-card--hr { grid-column: 1 / -1; }
+
+  .wd-lower { grid-template-columns: repeat(2, 1fr); }
+  .wd-panel--events { grid-column: 1 / -1; }
+}
+
+@media (max-width: 700px) {
+  .wd-header { align-items: flex-start; }
+  .wd-metrics,
+  .wd-lower { grid-template-columns: 1fr; }
+  .wd-band { width: min(88%, 360px); }
+  .wd-stage__visual { padding: 18px 14px 16px; }
+  .wd-hot__tip { max-width: 160px; }
+}
+
+/* --------------------------------------------------------------------------
+   10. Reduced motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .wd-page *,
+  .wd-page *::before,
+  .wd-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

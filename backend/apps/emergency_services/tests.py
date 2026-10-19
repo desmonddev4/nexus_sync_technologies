@@ -41,6 +41,7 @@ class EmergencyDirectoryTests(TestCase):
     def test_eligible_vehicles_require_verified_available_and_fresh_data(self):
         fresh = self.create_vehicle("NS-001", capabilities=["basic_life_support"])
         self.create_vehicle("NS-002", availability=AmbulanceVehicle.Availability.ON_CALL)
+        self.create_vehicle("NS-006", availability=AmbulanceVehicle.Availability.UNAVAILABLE)
         self.create_vehicle(
             "NS-003",
             location_updated_at=self.now - timedelta(minutes=10),

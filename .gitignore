@@ -9,6 +9,10 @@ htmlcov/
 node_modules/
 dist/
 build/
+.pio/
+frontend/admin/test-results/
+frontend/admin/playwright-report/
 backend/staticfiles/
 simulator/.device-event-queue.jsonl
+firmware/esp32/include/device_config.h
 .DS_Store

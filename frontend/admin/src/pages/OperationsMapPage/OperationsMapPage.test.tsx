@@ -73,6 +73,15 @@ describe('OperationsMapPage', () => {
     expect(getNearbyVehicles).not.toHaveBeenCalled()
   })
 
+  it('shows missing incident location without inventing coordinates or requesting vehicles', async () => {
+    getIncidents.mockResolvedValue([{ ...incident, location: null }])
+    render(<MemoryRouter><OperationsMapPage /></MemoryRouter>)
+
+    expect(await screen.findByText('No location snapshot', { selector: 'small' })).toBeInTheDocument()
+    expect(screen.getByText('no location').previousElementSibling).toHaveTextContent('1')
+    expect(getNearbyVehicles).not.toHaveBeenCalled()
+  })
+
   it('renders calculated route geometry as an ETA estimate, not dispatch confirmation', async () => {
     getIncidents.mockResolvedValue([{
       ...incident,

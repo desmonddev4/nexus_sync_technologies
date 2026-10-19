@@ -144,4 +144,34 @@ describe('IncidentDetailPage workflows', () => {
       expect(screen.getByText(/Operator-reported confirmation:/i)).toBeInTheDocument()
     })
   })
+
+  it('shows notification outcomes without implying delivery for submitted or unknown states', async () => {
+    const statuses = ['submitted', 'delivered', 'failed', 'submission_unknown']
+    mockGetIncident.mockResolvedValue(baseIncident)
+    mockGetIncidentNotifications.mockResolvedValue(statuses.map((status, index) => ({
+      id: `notification-${index}`,
+      contact_name: `Contact ${index + 1}`,
+      channel: 'sms',
+      status,
+      retry_count: 0,
+      last_attempt_at: now,
+      submitted_at: status !== 'queued' ? now : null,
+      delivered_at: status === 'delivered' ? now : null,
+      acknowledged_at: null,
+      provider_name: 'SasuSync',
+      provider_task_id: `task-${index}`,
+      provider_status_updated_at: now,
+      failure_code: status === 'failed' ? 'provider_rejected' : '',
+      created_at: now,
+    })))
+
+    renderDetailPage()
+
+    expect(await screen.findByText('Notification delivery')).toBeInTheDocument()
+    expect(screen.getByText('Submitted')).toBeInTheDocument()
+    expect(screen.getByText('Delivered')).toBeInTheDocument()
+    expect(screen.getByText('Failed')).toBeInTheDocument()
+    expect(screen.getByText('submission unknown')).toBeInTheDocument()
+    expect(screen.getByText(/provider_rejected/i)).toBeInTheDocument()
+  })
 })

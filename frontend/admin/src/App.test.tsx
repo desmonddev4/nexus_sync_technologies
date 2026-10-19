@@ -13,6 +13,15 @@ vi.mock('./api/client', () => ({
 
 import App from './App'
 import { getAuthToken } from './api/client'
+import * as operations from './api/operations'
+
+vi.mock('./api/operations', () => ({
+  getPatients: vi.fn(),
+  getPatient: vi.fn(),
+  getPatientMeasurements: vi.fn(),
+  getPatientLocations: vi.fn(),
+  getPatientDevices: vi.fn(),
+}))
 
 function renderApp(pathname: string) {
   window.history.pushState({}, 'test', pathname)
@@ -94,6 +103,57 @@ describe('App auth access control', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Sign in to operations' })).toBeInTheDocument()
+    })
+  })
+
+  it('renders the wearable demo page for authorized operators', async () => {
+    const user: CurrentUser = {
+      username: 'coordinator1',
+      role: 'emergency_coordinator',
+      can_access_operations: true,
+    }
+
+    vi.mocked(getAuthToken).mockReturnValue('token-1')
+    mockApiRequest.mockResolvedValueOnce(user).mockResolvedValueOnce([])
+
+    renderApp('/demo')
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Wearable demo' })).toBeInTheDocument()
+    })
+  })
+
+  it('loads live wearable data from the backend when the demo route opens', async () => {
+    const user: CurrentUser = {
+      username: 'coordinator1',
+      role: 'emergency_coordinator',
+      can_access_operations: true,
+    }
+
+    vi.mocked(getAuthToken).mockReturnValue('token-1')
+    mockApiRequest.mockResolvedValueOnce(user).mockResolvedValueOnce([])
+
+    vi.mocked(operations.getPatients).mockResolvedValue([
+      { id: 'pat-123', full_name: 'Ada Mensah', status: 'active', phone_number: '+233555123456', date_of_birth: null, relevant_medical_notes: '', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(operations.getPatientDevices).mockResolvedValue([
+      { id: 'dev-1', device_identifier: 'NS-SIM-001', device_type: 'wearable', status: 'active', firmware_version: '1.0.0', battery_percent: 82, last_seen_at: '2025-01-01T00:00:00Z', last_seen_age_seconds: 12, is_stale: false, credential_revoked: false, created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(operations.getPatientMeasurements).mockResolvedValue([
+      { id: 'm-1', patient: 'pat-123', device: 'dev-1', event_id: 'evt-1', measurement_type: 'heart_rate_bpm', value: '79', unit: 'bpm', source: 'device', quality: 'good', measured_at: '2025-01-01T00:00:00Z', received_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(operations.getPatientLocations).mockResolvedValue([
+      { id: 'loc-1', patient: 'pat-123', device: 'dev-1', event_id: 'evt-2', latitude: '5.6508', longitude: '-0.1869', accuracy_meters: '10', source: 'gps', quality: 'good', recorded_at: '2025-01-01T00:00:00Z', received_at: '2025-01-01T00:00:00Z' },
+    ])
+
+    renderApp('/demo')
+
+    await waitFor(() => {
+      expect(operations.getPatients).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('79')).toBeInTheDocument()
     })
   })
 })

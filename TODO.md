@@ -1,6 +1,6 @@
 # Nexus Sync Build Checklist
 
-Status reviewed: 2026-10-18
+Status reviewed: 2026-10-19
 
 `[x]` implemented and covered by tests; `[ ]` not yet complete. A checked software task does not imply clinical validation or real-world provider approval.
 
@@ -18,6 +18,7 @@ Status reviewed: 2026-10-18
 - [x] Allow active simulator/wearable device credentials to create idempotent SOS incidents with patient and source derived by the backend.
 - [x] Add controlled patient enrollment, account/role provisioning, coordinator-only device registry and credential lifecycle, and coordinator-managed provider/facility verification with recorded sources.
 - [x] Add safe simulated vehicle registration, defaulting vehicles to unavailable and keeping live fleet-feed authorization as a separate approval gate.
+- [x] Add a configurable ESP32 firmware scaffold for authenticated HTTPS, a durable idempotent event queue, periodic heartbeat, and a standalone manual SOS input; board, sensor, battery, and secure-update validation remain outstanding.
 
 ## Specification Roadmap: Remaining Pilot Deliverables
 
@@ -37,7 +38,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 
 - [x] Implement backend measurement/location ingestion, device authentication and revocation, deduplication, and a disabled-by-default, explainable monitoring-rules framework.
 - [x] Create the device/simulator client that exercises authenticated heartbeat, measurement, location, SOS, retry queue, and reconnection workflows against the API.
-- [ ] Build and validate ESP32 firmware and wearable sensors; preserve a dependable manual SOS path independent of AI or rules.
+- [ ] Build the firmware on the selected ESP32 board and validate wearable sensors; preserve a dependable manual SOS path independent of AI or rules.
 - [ ] Add and evaluate fall-candidate detection; do not treat a candidate fall as a diagnosis.
 - [ ] Add AI-assisted trend analysis only after governed, appropriately labelled data and clinical evaluation are available; report uncertainty and require human review.
 - [ ] Obtain provider authorization and document an approved fleet/status integration and dispatch-confirmation procedure before using live vehicle data.
@@ -46,7 +47,8 @@ The sections below track the specification's end-to-end milestone. Checked items
 ### Safety, privacy, testing, and pilot readiness
 
 - [x] Backend and dashboard communicate simulation and dispatch-confirmation limits; monitoring rules remain disabled by default and require authorized review.
-- [ ] Complete the remaining simulation, failure-mode, role-permission, and end-to-end acceptance scenarios below in a production-like environment.
+- [x] Add local automated coverage for simulation, failure-mode, role-permission, missing/stale-location, threshold-miss, notification-state, and lifecycle acceptance scenarios.
+- [ ] Repeat the critical simulation, failure-mode, role-permission, and end-to-end acceptance scenarios against a production-like environment.
 - [ ] Complete Ghana legal/privacy and health/medical-device review, pilot consent and data-sharing procedures, retention decisions, and breach response before real participant use.
 - [ ] Obtain clinical review of intended use, measurement quality, thresholds, escalation rules, and fall-detection protocol; validate sensors against appropriate references.
 - [ ] Verify production backups and restoration, operational monitoring/alerts, secret restrictions, and incident-response procedures.
@@ -68,7 +70,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Responder assignment, operator-recorded dispatch request/confirmation, vehicle release, and simulation labels.
 - [x] Google Routes adapter, stale-coordinate rejection, route estimate history, and simulated-route labeling.
 - [x] Metadata-only audit logging for patient/incident access and measurement/location ingestion, including object-level denials.
-- [x] Backend system checks, migrations, and 133 automated tests (verified with the complete backend test suite on 2026-10-18).
+- [x] Backend system checks and migrations; 148 automated tests pass (verified with the complete backend test suite on 2026-10-19).
 
 ## Immediate Priority: Custom Admin Dashboard
 
@@ -108,7 +110,8 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Add responsive desktop/tablet layouts and verify text/table behavior at smaller widths.
 - [x] Add frontend tests for login, access control, incident workflows, stale data, and simulated data labeling.
 - [x] Run frontend lint, typecheck, production build, and unit/component tests.
-- [ ] Add and run browser-based end-to-end tests against a production-like deployment. Local API lifecycle acceptance coverage exists; browser/deployment validation remains pending.
+- [x] Add and run local browser-based end-to-end tests for authentication, role denial, and dashboard navigation using controlled API fixtures.
+- [ ] Run browser-based end-to-end tests against a production-like deployment and verify the full API lifecycle there.
 
 ## Backend Work Remaining
 
@@ -142,14 +145,15 @@ The sections below track the specification's end-to-end milestone. Checked items
 
 - [ ] Run and record manual SOS end-to-end against a test deployment: dashboard, notification delivery-state checks, acknowledgement, assignment, route, operator-recorded confirmation, arrival, resolution, and closure.
 - [x] Automated local tests verify duplicate SOS/measurement/device retries do not duplicate records; repeat this acceptance check against a production-like deployment.
-- [ ] Missing and stale patient GPS remain visibly missing/stale; the system never substitutes invented coordinates.
+- [x] Local API/UI tests verify missing and stale patient GPS remain visibly missing/stale and never substitute invented coordinates.
 - [x] Add local simulator tests for offline queue retention, successful retry preserving event IDs, and SOS confirmation guard.
 - [ ] Run the simulator against a test deployment to verify offline queue flush, reconnection, and credential revocation behavior.
-- [ ] Notification rejection, timeout/unknown outcome, callback replay, out-of-order callbacks, and delivery reconciliation.
-- [ ] Unavailable, stale, unsuitable, unverified, and simulated vehicle selection behavior.
-- [ ] Rule quality rejection, stale reading, threshold miss, consecutive-reading trigger, simulation opt-in, and active-incident linking.
-- [ ] Permission tests for patient, clinician, emergency coordinator, provider responder, and superuser roles.
-- [ ] Confirm no workflow implies a message was delivered or an ambulance dispatched without corresponding evidence.
+- [x] Local backend/frontend tests cover notification rejection, timeout/unknown outcome, callback replay, out-of-order callbacks, delivery reconciliation, and operator-visible delivery states.
+- [x] Local tests cover unavailable, stale, unsuitable, unverified, and simulated vehicle selection behavior.
+- [x] Local tests cover rule quality rejection, stale reading, threshold miss, consecutive-reading trigger, simulation opt-in, and active-incident linking.
+- [x] Local tests cover patient, clinician, emergency coordinator, provider responder, and superuser permission cases.
+- [x] Local workflow/UI tests verify no message is presented as delivered and no ambulance as dispatched without corresponding evidence.
+- [ ] Repeat notification, vehicle-selection, rules, permissions, and evidence checks against a production-like deployment.
 - [x] Add one local SOS lifecycle API acceptance test covering consent-gated queueing, acknowledgement, simulated assignment, route estimate, operator-reported confirmation, and closure without claiming live delivery or dispatch.
 - [x] Add an incident list/action role matrix for patient, clinician, coordinator, provider responder, emergency contact, and superuser.
 
@@ -165,7 +169,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 
 ## Hardware and Later Mobile Work
 
-- [ ] Build and test ESP32 firmware for SOS, measurement timestamps, device identity, battery, and connectivity.
+- [ ] Build and test the firmware on the selected ESP32 board for SOS, measurement timestamps, device identity, calibrated battery reporting, and connectivity.
 - [ ] Validate heart-rate/SpO2 sensor behavior and correctly distinguish skin temperature from body temperature.
 - [ ] Integrate validated BP equipment if BP is required; never infer BP from a MAX30102.
 - [ ] Add accelerometer fall-candidate detection and evaluate against normal activity/device drops.

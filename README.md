@@ -45,6 +45,8 @@ npm run dev
 
 Set `VITE_API_BASE_URL` if your API is not served from `/api/v1`.
 
+Run frontend unit tests with `npm run test:run` and local browser acceptance tests with `npm run test:e2e`. The Playwright suite starts the Vite app and uses controlled API fixtures; it does not replace deployment acceptance testing.
+
 ## Backend setup
 
 ```bash
@@ -61,6 +63,10 @@ python manage.py runserver
 The development settings use SQLite by default so the API can be started locally without external services. To use PostgreSQL, set `DB_ENGINE=postgresql` and configure the `DB_*` values in `backend/.env`. Never commit `.env` or real credentials.
 
 Provision staff accounts through the coordinator/superuser-only Accounts page or the trusted Django management interface; there is no public user-registration endpoint. Emergency coordinators and superusers can create patient records, register/assign devices, and issue or revoke device credentials in the dashboard. Device secrets are hashed at rest and shown only once at issuance. New provider/facility records remain unverified until a coordinator records a verification source; provider fleet-feed authorization is a separate, deliberately non-self-service approval gate.
+
+## ESP32 firmware scaffold
+
+The configurable ESP32 device client and hardware-integration requirements are in [firmware/esp32/README.md](firmware/esp32/README.md). It provides HTTPS device authentication, durable idempotent event queueing, heartbeat transport, and an independent manual SOS button; sensor, battery, OTA, and target-board validation remain hardware-specific work.
 
 ## Deployment on Render and Vercel
 

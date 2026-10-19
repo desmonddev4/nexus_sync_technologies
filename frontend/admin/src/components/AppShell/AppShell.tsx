@@ -4,6 +4,7 @@ import {
   Ambulance,
   Cpu,
   ClipboardList,
+  HeartPulse,
   LogOut,
   MapPinned,
   ClipboardCheck,
@@ -40,6 +41,7 @@ const navigation: NavGroup[] = [
     title: 'Control room',
     items: [
       { to: '/', label: 'Operations overview', icon: Activity, end: true },
+      { to: '/demo', label: 'Wearable demo', icon: HeartPulse },
       { to: '/incidents', label: 'Incident queue', icon: ClipboardList },
       { to: '/patients', label: 'Patients', icon: Users },
       { to: '/devices', label: 'Devices', icon: Cpu },

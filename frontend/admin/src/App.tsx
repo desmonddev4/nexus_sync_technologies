@@ -16,6 +16,7 @@ import { SettingsPage } from './pages/SettingsPage/SettingsPage'
 import { ServicesPage } from './pages/ServicesPage/ServicesPage'
 import { MeasurementReviewPage } from './pages/MeasurementReviewPage/MeasurementReviewPage'
 import { DevicesPage } from './pages/DevicesPage/DevicesPage'
+import { WearableDemoPage } from './pages/WearableDemoPage/WearableDemoPage'
 
 const OperationsMapPage = lazy(() => import('./pages/OperationsMapPage/OperationsMapPage').then((module) => ({ default: module.OperationsMapPage })))
 
@@ -28,6 +29,7 @@ function App() {
           <Route element={<ProtectedOperations />}>
             <Route element={<AppShell />}>
               <Route index element={<OverviewPage />} />
+              <Route path="demo" element={<WearableDemoPage />} />
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="incidents/:incidentId" element={<IncidentDetailPage />} />
               <Route path="patients" element={<PatientsPage />} />
