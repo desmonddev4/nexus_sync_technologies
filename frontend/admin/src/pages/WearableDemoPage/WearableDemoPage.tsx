@@ -66,7 +66,7 @@ const sosCopy: Record<SosState, { title: string; text: string }> = {
 /* Band illustration — a woven nylon loop with a slim tracker pod      */
 /* ------------------------------------------------------------------ */
 
-function BandIllustration() {
+export function BandIllustration() {
   return (
     <svg className="wd-band__svg" viewBox="0 0 500 560" role="img" aria-label="Black woven wristband with a slim tracker pod">
       <defs>

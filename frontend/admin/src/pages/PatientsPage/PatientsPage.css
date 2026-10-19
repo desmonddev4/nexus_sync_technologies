@@ -428,6 +428,78 @@
 .patient-main,
 .patient-contact { display: grid; min-width: 0; gap: 5px; }
 
+.patient-device {
+  display: grid;
+  min-width: 200px;
+  gap: 6px;
+  padding: 9px 10px;
+  background: rgba(36, 87, 245, 0.05);
+  border: 1px solid rgba(36, 87, 245, 0.12);
+  border-radius: 12px;
+}
+
+.patient-device__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-device__label {
+  color: var(--pt-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.patient-device__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+}
+
+.patient-device__status--ready,
+.patient-device__status--active {
+  color: #0d7a4d;
+  background: rgba(34, 184, 135, 0.12);
+}
+
+.patient-device__status--charging,
+.patient-device__status--syncing,
+.patient-device__status--idle {
+  color: #1557c0;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.patient-device__status--stale,
+.patient-device__status--offline,
+.patient-device__status--warning {
+  color: #9a5520;
+  background: rgba(244, 182, 89, 0.18);
+}
+
+.patient-device__status--none {
+  color: var(--pt-muted);
+  background: rgba(102, 112, 153, 0.12);
+}
+
+.patient-device__empty {
+  color: var(--pt-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.patient-device small {
+  color: var(--pt-muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
 .patient-main strong {
   overflow: hidden;
   color: var(--pt-ink);

@@ -22,6 +22,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { createRegistryDevice, getDeviceRegistry, getPatients, issueDeviceCredential, revokeDeviceCredential, updateRegistryDevice } from '../../api/operations'
 import type { DeviceRegistryRecord, IssuedDeviceCredential, Patient } from '../../types/api'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -463,6 +464,9 @@ export function DevicesPage() {
                     </div>
 
                     <div className="device-row__actions">
+                      <Link className="ui-btn ui-btn--sm" to={`/devices/${device.id}`}>
+                        View device
+                      </Link>
                       {canIssue && <button type="button" className="ui-btn dv-issue ui-btn--sm" onClick={() => issue(device)} disabled={busy}><KeyRound size={15} /> Issue / rotate credential</button>}
                       {!device.credential_revoked && (
                         <button type="button" className={`ui-btn ui-btn--danger ui-btn--sm${confirmRevokeId === device.id ? ' is-armed' : ''}`} onClick={() => revoke(device)} disabled={busy}>

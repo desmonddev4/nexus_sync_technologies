@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowUpRight, CalendarDays, ChevronDown, LayoutGrid, List, Phone, Search, UserPlus, UserRound, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { createPatient, getPatients } from '../../api/operations'
-import type { Patient } from '../../types/api'
+import { createPatient, getPatientDevices, getPatients } from '../../api/operations'
+import type { DeviceHealth, Patient } from '../../types/api'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { StatusBadge } from '../../components/StatusBadge/StatusBadge'
 import './PatientsPage.css'
@@ -51,8 +51,12 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-function PatientItem({ patient, query, view, index }: { patient: Patient; query: string; view: ViewMode; index: number }) {
+function PatientItem({ patient, query, view, index, devices }: { patient: Patient; query: string; view: ViewMode; index: number; devices: DeviceHealth[] }) {
   const shortId = patient.id.slice(0, 8)
+  const primaryDevice = devices[0]
+  const deviceStatusClass = primaryDevice ? `patient-device__status--${primaryDevice.status.toLowerCase()}` : 'patient-device__status--none'
+  const lastSeen = primaryDevice?.last_seen_at ? new Date(primaryDevice.last_seen_at).toLocaleString() : 'Awaiting first heartbeat'
+
   return (
     <article className={`patient-row patient-row--${view}`} style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}>
       <span className={`patient-avatar patient-avatar--${toneOf(patient.id)}`} aria-hidden="true">{initials(patient.full_name)}</span>
@@ -77,6 +81,24 @@ function PatientItem({ patient, query, view, index }: { patient: Patient; query:
         <small><CalendarDays size={12} /> {patient.date_of_birth ? `DOB ${patient.date_of_birth}` : 'DOB not recorded'}</small>
       </div>
 
+      <div className="patient-device">
+        {primaryDevice ? (
+          <>
+            <div className="patient-device__meta">
+              <span className="patient-device__label">{primaryDevice.device_identifier}</span>
+              <span className={`patient-device__status ${deviceStatusClass}`}>{primaryDevice.status}</span>
+            </div>
+            <small>
+              {primaryDevice.device_type} · {primaryDevice.battery_percent ?? 'n/a'}% battery · {lastSeen}
+            </small>
+          </>
+        ) : (
+          <div className="patient-device__meta">
+            <span className="patient-device__empty">No wearable linked</span>
+          </div>
+        )}
+      </div>
+
       <StatusBadge value={patient.status} />
 
       <Link className="patient-open" to={`/patients/${patient.id}`} aria-label={`Open ${patient.full_name}`}>
@@ -93,6 +115,7 @@ function PatientItem({ patient, query, view, index }: { patient: Patient; query:
 
 export function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([])
+  const [devicesByPatient, setDevicesByPatient] = useState<Record<string, DeviceHealth[]>>({})
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sort, setSort] = useState<SortMode>('name')
@@ -106,7 +129,38 @@ export function PatientsPage() {
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    getPatients().then(setPatients).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false))
+    let active = true
+
+    getPatients()
+      .then(async (nextPatients) => {
+        if (!active) return
+        setPatients(nextPatients)
+
+        const entries = await Promise.all(
+          nextPatients.map(async (patient) => {
+            try {
+              const devices = await getPatientDevices(patient.id)
+              return [patient.id, devices] as const
+            } catch {
+              return [patient.id, []] as const
+            }
+          }),
+        )
+
+        if (!active) return
+        setDevicesByPatient(Object.fromEntries(entries))
+      })
+      .catch((reason: Error) => {
+        if (!active) return
+        setError(reason.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
   async function submitNewPatient(event: FormEvent<HTMLFormElement>) {
@@ -278,7 +332,7 @@ export function PatientsPage() {
           </p>
           <div className={`patient-list patient-list--${view}`}>
             {visible.map((patient, index) => (
-              <PatientItem key={patient.id} patient={patient} query={query} view={view} index={index} />
+              <PatientItem key={patient.id} patient={patient} query={query} view={view} index={index} devices={devicesByPatient[patient.id] ?? []} />
             ))}
           </div>
           {filtered.length > visible.length && (
