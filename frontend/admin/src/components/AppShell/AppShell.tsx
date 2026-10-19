@@ -21,7 +21,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import nstLogo from '../../assets/NST LOGO.png'
 import alertToneAudio from '../../assets/alert-sound.mp4'
-import { getIncidents, getPatients } from '../../api/operations'
+import { advanceIncident, getIncidents, getPatients } from '../../api/operations'
 import type { Incident, Patient } from '../../types/api'
 import './AppShell.css'
 
@@ -97,69 +97,12 @@ function useClock() {
 
 interface AlertToastEntry {
   id: string
+  incidentId: string
   title: string
   patientName: string
   locationLabel: string
   detail: string
   priority: 'critical' | 'high' | 'medium' | 'low'
-}
-
-function playAlertTone() {
-  if (typeof window === 'undefined') return
-
-  const fallbackTone = () => {
-    const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (!AudioCtor) return
-
-    try {
-      const audioContext = new AudioCtor()
-      const oscillatorA = audioContext.createOscillator()
-      const oscillatorB = audioContext.createOscillator()
-      const gain = audioContext.createGain()
-
-      oscillatorA.type = 'sawtooth'
-      oscillatorB.type = 'square'
-      oscillatorA.frequency.setValueAtTime(980, audioContext.currentTime)
-      oscillatorA.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.28)
-      oscillatorB.frequency.setValueAtTime(640, audioContext.currentTime)
-      oscillatorB.frequency.exponentialRampToValueAtTime(240, audioContext.currentTime + 0.35)
-
-      gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.35, audioContext.currentTime + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7)
-
-      oscillatorA.connect(gain)
-      oscillatorB.connect(gain)
-      gain.connect(audioContext.destination)
-
-      oscillatorA.start()
-      oscillatorB.start()
-      oscillatorA.stop(audioContext.currentTime + 0.7)
-      oscillatorB.stop(audioContext.currentTime + 0.7)
-      void audioContext.resume()
-    } catch {
-      // Browser audio restrictions can be ignored when the device does not allow autoplay.
-    }
-  }
-
-  try {
-    const audio = new Audio(alertToneAudio)
-    audio.volume = 1
-    audio.muted = false
-    audio.currentTime = 0
-
-    if (typeof audio.play === 'function') {
-      const playResult = audio.play()
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(() => fallbackTone())
-      }
-      return
-    }
-  } catch {
-    // Browser media restrictions can be ignored when audio cannot be created.
-  }
-
-  fallbackTone()
 }
 
 function getIncidentTitle(incident: Incident) {
@@ -181,6 +124,81 @@ function getLocationSummary(incident: Incident) {
 function AlertToastCenter() {
   const [toasts, setToasts] = useState<AlertToastEntry[]>([])
   const seenIdsRef = useRef<Set<string>>(new Set())
+  const alertAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  const stopAlertTone = () => {
+    const audio = alertAudioRef.current
+    if (!audio) return
+    if (typeof audio.pause === 'function') {
+      audio.pause()
+    }
+    if ('currentTime' in audio) {
+      audio.currentTime = 0
+    }
+    audio.onended = null
+    alertAudioRef.current = null
+  }
+
+  const startAlertTone = () => {
+    if (typeof window === 'undefined') return
+
+    const audio = alertAudioRef.current ?? new Audio(alertToneAudio)
+    audio.volume = 1
+    audio.muted = false
+    if ('currentTime' in audio) {
+      audio.currentTime = 0
+    }
+    audio.onended = () => {
+      if (alertAudioRef.current !== audio) return
+      if (document.visibilityState === 'hidden') return
+      if (typeof audio.play === 'function') {
+        const playResult = audio.play()
+        if (playResult && typeof playResult.catch === 'function') {
+          playResult.catch(() => undefined)
+        }
+      }
+    }
+
+    alertAudioRef.current = audio
+    if (typeof audio.play === 'function') {
+      const playResult = audio.play()
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => {
+          const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+          if (!AudioCtor) return
+          try {
+            const audioContext = new AudioCtor()
+            const oscillatorA = audioContext.createOscillator()
+            const oscillatorB = audioContext.createOscillator()
+            const gain = audioContext.createGain()
+
+            oscillatorA.type = 'sawtooth'
+            oscillatorB.type = 'square'
+            oscillatorA.frequency.setValueAtTime(980, audioContext.currentTime)
+            oscillatorA.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.28)
+            oscillatorB.frequency.setValueAtTime(640, audioContext.currentTime)
+            oscillatorB.frequency.exponentialRampToValueAtTime(240, audioContext.currentTime + 0.35)
+
+            gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+            gain.gain.exponentialRampToValueAtTime(0.35, audioContext.currentTime + 0.02)
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7)
+
+            oscillatorA.connect(gain)
+            oscillatorB.connect(gain)
+            gain.connect(audioContext.destination)
+
+            oscillatorA.start()
+            oscillatorB.start()
+            oscillatorA.stop(audioContext.currentTime + 0.7)
+            oscillatorB.stop(audioContext.currentTime + 0.7)
+            void audioContext.resume()
+          } catch {
+            // Browser audio restrictions can be ignored when the device does not allow autoplay.
+          }
+        })
+      }
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -202,12 +220,11 @@ function AlertToastCenter() {
           return
         }
 
-        playAlertTone()
-
         const newToasts = freshIncidents.slice(0, 3).map((incident) => {
           const patient = patientMap.get(incident.patient)
           return {
             id: incident.id,
+            incidentId: incident.id,
             title: getIncidentTitle(incident),
             patientName: patient?.full_name || 'Unknown patient',
             locationLabel: getLocationSummary(incident),
@@ -216,7 +233,13 @@ function AlertToastCenter() {
           }
         })
 
-        setToasts((current) => [...newToasts, ...current].slice(0, 3))
+        setToasts((current) => {
+          const merged = [...newToasts, ...current].slice(0, 3)
+          if (merged.length > 0) {
+            startAlertTone()
+          }
+          return merged
+        })
         freshIncidents.forEach((incident) => seenIdsRef.current.add(incident.id))
 
         newToasts.forEach((toast) => {
@@ -233,12 +256,30 @@ function AlertToastCenter() {
     const timer = window.setInterval(() => { void pollAlerts() }, 4_000)
     return () => {
       active = false
+      stopAlertTone()
       window.clearInterval(timer)
     }
   }, [])
 
-  const dismissToast = (id: string) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+  useEffect(() => {
+    if (toasts.length === 0) {
+      stopAlertTone()
+    } else {
+      startAlertTone()
+    }
+  }, [toasts.length])
+
+  const dismissToast = async (id: string) => {
+    const toast = toasts.find((item) => item.id === id)
+    if (toast) {
+      try {
+        await advanceIncident(toast.incidentId, 'resolved')
+      } catch {
+        // continue dismissing the toast even if the backend request fails
+      }
+    }
+
+    setToasts((current) => current.filter((toastItem) => toastItem.id !== id))
   }
 
   if (toasts.length === 0) return null
@@ -280,6 +321,9 @@ function AlertToastCenter() {
             <Link to="/incidents" className="alert-toast__open" onClick={() => dismissToast(toast.id)}>
               Open incident queue
             </Link>
+            <button type="button" className="alert-toast__resolve" onClick={() => void dismissToast(toast.id)}>
+              Mark resolved
+            </button>
           </div>
         </div>
       ))}
