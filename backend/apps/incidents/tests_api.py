@@ -270,6 +270,47 @@ class SOSApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], Incident.Status.ACKNOWLEDGED)
 
+    def test_incident_list_and_acknowledgement_permissions_by_role(self):
+        incident = Incident.objects.create(
+            patient=self.patient,
+            source_event_id=uuid.uuid4(),
+            trigger_source=Incident.Source.MANUAL,
+        )
+        clinician = get_user_model().objects.create_user(username="incident-clinician")
+        AccountProfile.objects.create(user=clinician, role=AccountProfile.Role.CLINICIAN)
+        responder = get_user_model().objects.create_user(username="incident-responder")
+        AccountProfile.objects.create(user=responder, role=AccountProfile.Role.PROVIDER_RESPONDER)
+        contact = get_user_model().objects.create_user(username="incident-contact")
+        AccountProfile.objects.create(user=contact, role=AccountProfile.Role.EMERGENCY_CONTACT)
+        superuser = get_user_model().objects.create_superuser(
+            username="incident-superuser",
+            email="incident-superuser@example.test",
+            password="test-password",
+        )
+        url = f"/api/v1/incidents/{incident.pk}/"
+
+        role_cases = (
+            (self.patient_user, 200, 1, 403),
+            (clinician, 200, 1, 200),
+            (self.coordinator, 200, 1, 200),
+            (responder, 403, 0, 403),
+            (contact, 403, 0, 403),
+            (superuser, 200, 1, 200),
+        )
+        for user, list_status, visible_count, acknowledge_status in role_cases:
+            with self.subTest(role=user.username):
+                self.client.force_authenticate(user)
+                listed = self.client.get("/api/v1/incidents/")
+                self.assertEqual(listed.status_code, list_status)
+                if list_status == 200:
+                    self.assertEqual(len(listed.json()), visible_count)
+                acknowledged = self.client.post(f"{url}acknowledge/")
+                self.assertEqual(acknowledged.status_code, acknowledge_status)
+                if acknowledge_status == 200:
+                    incident.refresh_from_db()
+                    incident.status = Incident.Status.CREATED
+                    incident.save(update_fields=("status", "updated_at"))
+
     def test_sos_queues_only_verified_contacts_with_current_consent(self):
         contact = EmergencyContact.objects.create(
             patient=self.patient,
@@ -691,3 +732,97 @@ class SOSApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["is_simulated"])
+
+    @patch("apps.incidents.views.GoogleRoutesProvider")
+    def test_local_sos_acceptance_flow_keeps_delivery_and_dispatch_evidence_distinct(self, provider_class):
+        contact = EmergencyContact.objects.create(
+            patient=self.patient,
+            name="Acceptance Test Contact",
+            phone_number="+233200000099",
+            priority_order=1,
+            verification_status=EmergencyContact.VerificationStatus.VERIFIED,
+        )
+        ConsentRecord.objects.create(
+            patient=self.patient,
+            scope=ConsentRecord.Scope.EMERGENCY_CONTACTS,
+            status=ConsentRecord.Status.GRANTED,
+            policy_version="acceptance-test-v1",
+        )
+        location_time = timezone.now()
+        PatientLocation.objects.create(
+            patient=self.patient,
+            event_id=uuid.uuid4(),
+            latitude=Decimal("5.603700"),
+            longitude=Decimal("-0.187000"),
+            source=PatientLocation.Source.PHONE,
+            quality=PatientLocation.Quality.VALID,
+            recorded_at=location_time,
+            received_at=location_time,
+        )
+        self.client.force_authenticate(self.patient_user)
+        sos = self.client.post(
+            "/api/v1/incidents/sos/",
+            {
+                "patient": str(self.patient.pk),
+                "event_id": str(uuid.uuid4()),
+                "trigger_source": Incident.Source.MANUAL,
+            },
+            format="json",
+        )
+        self.assertEqual(sos.status_code, 201)
+        incident_id = sos.json()["id"]
+        self.assertFalse(sos.json()["location"]["is_stale"])
+
+        notification = IncidentNotification.objects.get(incident_id=incident_id)
+        self.assertEqual(notification.emergency_contact, contact)
+        self.assertEqual(notification.status, IncidentNotification.Status.QUEUED)
+
+        self.client.force_authenticate(self.coordinator)
+        base_url = f"/api/v1/incidents/{incident_id}/"
+        self.assertEqual(self.client.post(f"{base_url}acknowledge/").status_code, 200)
+        vehicle = self.create_vehicle(simulated=True)
+        assignment = self.client.post(
+            f"{base_url}assign-responder/",
+            {"vehicle": str(vehicle.pk), "include_simulated": True},
+            format="json",
+        )
+        self.assertEqual(assignment.status_code, 200)
+        self.assertTrue(assignment.json()["is_simulated_dispatch"])
+
+        provider_class.return_value.calculate_driving_route.return_value = RouteResult(
+            distance_meters=1200,
+            duration_seconds=360,
+            encoded_polyline="acceptance-polyline",
+        )
+        route = self.client.post(f"{base_url}route/")
+        self.assertEqual(route.status_code, 200)
+        self.assertTrue(route.json()["is_simulated"])
+
+        dispatch_request = self.client.post(f"{base_url}record-dispatch-request/")
+        self.assertEqual(dispatch_request.status_code, 200)
+        self.assertFalse(dispatch_request.json()["provider_contacted_by_system"])
+        confirmation = self.client.post(
+            f"{base_url}record-dispatch-confirmation/",
+            {"confirmation_reference": "local acceptance test only"},
+            format="json",
+        )
+        self.assertEqual(confirmation.status_code, 200)
+        self.assertEqual(confirmation.json()["confirmation_source"], "operator_reported")
+
+        for next_status in (
+            Incident.Status.RESPONDER_EN_ROUTE,
+            Incident.Status.ARRIVED,
+            Incident.Status.RESOLVED,
+            Incident.Status.CLOSED,
+        ):
+            response = self.client.post(
+                f"{base_url}status/",
+                {"status": next_status},
+                format="json",
+            )
+            self.assertEqual(response.status_code, 200, response.json())
+        incident = Incident.objects.get(pk=incident_id)
+        self.assertEqual(incident.status, Incident.Status.CLOSED)
+        self.assertTrue(incident.is_simulated_dispatch)
+        notification.refresh_from_db()
+        self.assertEqual(notification.status, IncidentNotification.Status.QUEUED)

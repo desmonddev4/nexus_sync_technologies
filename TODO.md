@@ -66,7 +66,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Responder assignment, operator-recorded dispatch request/confirmation, vehicle release, and simulation labels.
 - [x] Google Routes adapter, stale-coordinate rejection, route estimate history, and simulated-route labeling.
 - [x] Metadata-only audit logging for patient/incident access and measurement/location ingestion, including object-level denials.
-- [x] Backend system checks, migrations, and 131 automated tests (verified with the complete backend test suite on 2026-10-18).
+- [x] Backend system checks, migrations, and 133 automated tests (verified with the complete backend test suite on 2026-10-18).
 
 ## Immediate Priority: Custom Admin Dashboard
 
@@ -105,7 +105,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Add responsive desktop/tablet layouts and verify text/table behavior at smaller widths.
 - [x] Add frontend tests for login, access control, incident workflows, stale data, and simulated data labeling.
 - [x] Run frontend lint, typecheck, production build, and unit/component tests.
-- [ ] Add and run browser-based end-to-end tests against a production-like deployment.
+- [ ] Add and run browser-based end-to-end tests against a production-like deployment. Local API lifecycle acceptance coverage exists; browser/deployment validation remains pending.
 
 ## Backend Work Remaining
 
@@ -136,14 +136,17 @@ The sections below track the specification's end-to-end milestone. Checked items
 ## Simulation and Acceptance Scenarios
 
 - [ ] Run and record manual SOS end-to-end against a test deployment: dashboard, notification delivery-state checks, acknowledgement, assignment, route, operator-recorded confirmation, arrival, resolution, and closure.
-- [ ] Duplicate SOS/measurement/device retries produce no duplicate incidents or notifications.
+- [x] Automated local tests verify duplicate SOS/measurement/device retries do not duplicate records; repeat this acceptance check against a production-like deployment.
 - [ ] Missing and stale patient GPS remain visibly missing/stale; the system never substitutes invented coordinates.
+- [x] Add local simulator tests for offline queue retention, successful retry preserving event IDs, and SOS confirmation guard.
 - [ ] Run the simulator against a test deployment to verify offline queue flush, reconnection, and credential revocation behavior.
 - [ ] Notification rejection, timeout/unknown outcome, callback replay, out-of-order callbacks, and delivery reconciliation.
 - [ ] Unavailable, stale, unsuitable, unverified, and simulated vehicle selection behavior.
 - [ ] Rule quality rejection, stale reading, threshold miss, consecutive-reading trigger, simulation opt-in, and active-incident linking.
 - [ ] Permission tests for patient, clinician, emergency coordinator, provider responder, and superuser roles.
 - [ ] Confirm no workflow implies a message was delivered or an ambulance dispatched without corresponding evidence.
+- [x] Add one local SOS lifecycle API acceptance test covering consent-gated queueing, acknowledgement, simulated assignment, route estimate, operator-reported confirmation, and closure without claiming live delivery or dispatch.
+- [x] Add an incident list/action role matrix for patient, clinician, coordinator, provider responder, emergency contact, and superuser.
 
 ## Clinical, Privacy, and Safety Gates
 
