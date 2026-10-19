@@ -35,12 +35,15 @@ interface StatusBadgeProps {
   tone?: Tone
 }
 
-// Tones that mean "something is happening or needs a look" get a pulsing dot.
-const livetones = new Set<Tone>(['danger', 'warning', 'info'])
+// Tones that mean "something is happening or needs a look" get a blinking indicator.
+const liveTones = new Set<Tone>(['danger', 'warning', 'info'])
+
+// Dead-end states stay still even though their tone is attention-colored.
+const stillValues = ['failed', 'cancelled', 'declined', 'inactive', 'unverified']
 
 export function StatusBadge({ value, tone }: StatusBadgeProps) {
   const inferredTone = tone || getTone(value)
-  const live = livetones.has(inferredTone) && !['failed', 'cancelled', 'declined', 'inactive', 'unverified'].includes(value)
+  const live = liveTones.has(inferredTone) && !stillValues.includes(value)
   return (
     <span className={`status-badge status-badge--${inferredTone}${live ? ' is-live' : ''}`}>
       {labels[value] || value.replaceAll('_', ' ')}

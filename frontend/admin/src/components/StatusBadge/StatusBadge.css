@@ -1,70 +1,65 @@
 /* ==========================================================================
-   StatusBadge.css — tinted glass pill with a status dot
+   StatusBadge.css — flat tag with a shape-coded indicator
    ========================================================================== */
 
-.status-badge--default { --b: #5b6690; --b-rgb: 91, 102, 144; }
-.status-badge--danger  { --b: #d6364f; --b-rgb: 214, 54, 79; }
-.status-badge--success { --b: #12875f; --b-rgb: 18, 135, 95; }
-.status-badge--warning { --b: #b7710c; --b-rgb: 217, 138, 20; }
-.status-badge--info    { --b: #1f5fd6; --b-rgb: 47, 123, 255; }
+.status-badge--default { --b: #4a5478; --b-bg: #eef0f7; --b-bd: #cfd5e6; }
+.status-badge--danger  { --b: #b4233b; --b-bg: #fdecef; --b-bd: #f1b3be; }
+.status-badge--success { --b: #0d6b4b; --b-bg: #e5f6ee; --b-bd: #a6dcc4; }
+.status-badge--warning { --b: #8f5707; --b-bg: #fff3dc; --b-bd: #efcc8f; }
+.status-badge--info    { --b: #1a4fc0; --b-bg: #e7eefe; --b-bd: #b1c6f5; }
 
 .status-badge {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 26px;
-  padding: 3px 11px 3px 9px;
+  min-height: 24px;
+  padding: 3px 10px 3px 8px;
   color: var(--b);
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   line-height: 1.2;
+  text-transform: uppercase;
   white-space: nowrap;
-  background: linear-gradient(135deg, rgba(var(--b-rgb), 0.16), rgba(var(--b-rgb), 0.07));
-  border: 1px solid rgba(var(--b-rgb), 0.28);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
+  background: var(--b-bg);
+  border: 1px solid var(--b-bd);
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .status-badge:hover {
-  box-shadow: 0 6px 16px rgba(var(--b-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transform: translateY(-1px) scale(1.03);
+  color: #fff;
+  background: var(--b);
+  border-color: var(--b);
+  transform: translateY(-1px);
 }
 
+/* Indicator — shape changes with tone, color is never the only signal */
 .status-badge::before {
-  position: relative;
-  width: 7px;
-  height: 7px;
+  flex: none;
+  width: 8px;
+  height: 8px;
   background: currentColor;
   border-radius: 50%;
   content: '';
 }
 
-/* Pulse ring for statuses that are live or need attention */
-.status-badge.is-live::after {
-  position: absolute;
-  top: 50%;
-  left: 9px;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0.55);
-  content: '';
-  animation: status-pulse 1.9s ease-out infinite;
-  pointer-events: none;
+.status-badge--danger::before  { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
+.status-badge--warning::before { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
+.status-badge--info::before    { background: transparent; border: 2px solid currentColor; }
+.status-badge--default::before { height: 2px; border-radius: 1px; }
+
+/* Live / needs attention: hard blink, like a console LED */
+.status-badge.is-live::before {
+  animation: status-blink 1.2s steps(1, end) infinite;
 }
 
-@keyframes status-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0.55); }
-  70%  { box-shadow: 0 0 0 7px rgba(var(--b-rgb), 0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--b-rgb), 0); }
+@keyframes status-blink {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.2; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-badge.is-live::after { animation: none; }
+  .status-badge.is-live::before { animation: none; }
   .status-badge { transition-duration: 0.01ms; }
 }

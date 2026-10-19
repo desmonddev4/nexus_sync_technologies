@@ -10,12 +10,11 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, detail }: EmptyStateProps) {
   return (
     <div className="empty-state">
-      <span className="empty-state__orb" aria-hidden="true">
-        <i className="empty-state__ring empty-state__ring--a" />
-        <i className="empty-state__ring empty-state__ring--b" />
-        <span className="empty-state__icon"><Icon size={22} /></span>
+      <span className="empty-state__tile" aria-hidden="true">
+        <Icon size={22} strokeWidth={1.8} />
       </span>
       <strong>{title}</strong>
+      <span className="empty-state__rule" aria-hidden="true" />
       <p>{detail}</p>
     </div>
   )
