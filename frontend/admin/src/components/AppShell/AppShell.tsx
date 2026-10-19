@@ -20,6 +20,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import nstLogo from '../../assets/NST LOGO.png'
+import alertToneAudio from '../../assets/alert-sound.mp4'
 import { getIncidents, getPatients } from '../../api/operations'
 import type { Incident, Patient } from '../../types/api'
 import './AppShell.css'
@@ -106,38 +107,59 @@ interface AlertToastEntry {
 function playAlertTone() {
   if (typeof window === 'undefined') return
 
-  const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  if (!AudioCtor) return
+  const fallbackTone = () => {
+    const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioCtor) return
+
+    try {
+      const audioContext = new AudioCtor()
+      const oscillatorA = audioContext.createOscillator()
+      const oscillatorB = audioContext.createOscillator()
+      const gain = audioContext.createGain()
+
+      oscillatorA.type = 'sawtooth'
+      oscillatorB.type = 'square'
+      oscillatorA.frequency.setValueAtTime(980, audioContext.currentTime)
+      oscillatorA.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.28)
+      oscillatorB.frequency.setValueAtTime(640, audioContext.currentTime)
+      oscillatorB.frequency.exponentialRampToValueAtTime(240, audioContext.currentTime + 0.35)
+
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.35, audioContext.currentTime + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7)
+
+      oscillatorA.connect(gain)
+      oscillatorB.connect(gain)
+      gain.connect(audioContext.destination)
+
+      oscillatorA.start()
+      oscillatorB.start()
+      oscillatorA.stop(audioContext.currentTime + 0.7)
+      oscillatorB.stop(audioContext.currentTime + 0.7)
+      void audioContext.resume()
+    } catch {
+      // Browser audio restrictions can be ignored when the device does not allow autoplay.
+    }
+  }
 
   try {
-    const audioContext = new AudioCtor()
-    const oscillatorA = audioContext.createOscillator()
-    const oscillatorB = audioContext.createOscillator()
-    const gain = audioContext.createGain()
+    const audio = new Audio(alertToneAudio)
+    audio.volume = 1
+    audio.muted = false
+    audio.currentTime = 0
 
-    oscillatorA.type = 'sawtooth'
-    oscillatorB.type = 'square'
-    oscillatorA.frequency.setValueAtTime(980, audioContext.currentTime)
-    oscillatorA.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.28)
-    oscillatorB.frequency.setValueAtTime(640, audioContext.currentTime)
-    oscillatorB.frequency.exponentialRampToValueAtTime(240, audioContext.currentTime + 0.35)
-
-    gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7)
-
-    oscillatorA.connect(gain)
-    oscillatorB.connect(gain)
-    gain.connect(audioContext.destination)
-
-    oscillatorA.start()
-    oscillatorB.start()
-    oscillatorA.stop(audioContext.currentTime + 0.7)
-    oscillatorB.stop(audioContext.currentTime + 0.7)
-    void audioContext.resume()
+    if (typeof audio.play === 'function') {
+      const playResult = audio.play()
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => fallbackTone())
+      }
+      return
+    }
   } catch {
-    // Browser audio restrictions can be ignored when the device does not allow autoplay.
+    // Browser media restrictions can be ignored when audio cannot be created.
   }
+
+  fallbackTone()
 }
 
 function getIncidentTitle(incident: Incident) {
