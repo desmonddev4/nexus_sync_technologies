@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, BatteryCharging, CloudUpload, HeartPulse, MapPin, ShieldCheck, Siren, Watch, Wifi } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
+import { readDeviceSecret, saveDeviceSecret, triggerDeviceMeasurement, triggerDeviceSos } from '../../api/client'
 import { getDeviceRegistry, getPatientLocations, getPatientMeasurements, getPatients } from '../../api/operations'
 import type { DeviceRegistryRecord, Measurement, Patient, PatientLocation } from '../../types/api'
 import { BandIllustration } from '../WearableDemoPage/WearableDemoPage'
@@ -22,8 +23,20 @@ export function DeviceDetailPage() {
   const [patient, setPatient] = useState<Patient | null>(null)
   const [measurements, setMeasurements] = useState<Measurement[]>([])
   const [locations, setLocations] = useState<PatientLocation[]>([])
+  const [savedSecret, setSavedSecret] = useState('')
+  const [manualSecret, setManualSecret] = useState('')
+  const [simulatorNotice, setSimulatorNotice] = useState('')
+  const [simulatorError, setSimulatorError] = useState('')
+  const [sendingAlert, setSendingAlert] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setSavedSecret(readDeviceSecret(deviceId) ?? '')
+    setManualSecret('')
+    setSimulatorNotice('')
+    setSimulatorError('')
+  }, [deviceId])
 
   useEffect(() => {
     let active = true
@@ -83,6 +96,52 @@ export function DeviceDetailPage() {
     return [...locations].sort((a, b) => Date.parse(b.recorded_at) - Date.parse(a.recorded_at))[0] ?? null
   }, [locations])
 
+  const simulatorSecret = manualSecret || savedSecret
+
+  async function triggerSimulatorPreset(kind: 'sos' | 'heart_rate' | 'spo2') {
+    if (!device || !patient) {
+      setSimulatorError('Link this device to a patient before simulating an alert.')
+      return
+    }
+
+    const resolvedSecret = simulatorSecret.trim()
+    if (!resolvedSecret) {
+      setSimulatorError('Issue the device credential and paste it here or use the saved simulator secret before sending an alert.')
+      return
+    }
+
+    setSendingAlert(true)
+    setSimulatorError('')
+    setSimulatorNotice('')
+
+    try {
+      if (kind === 'sos') {
+        const incident = await triggerDeviceSos(device.device_identifier, resolvedSecret, patient.id)
+        saveDeviceSecret(device.id, resolvedSecret)
+        setSavedSecret(resolvedSecret)
+        setManualSecret('')
+        setSimulatorNotice(incident?.id ? `SOS alert queued for ${patient.full_name}. The control room received it via the simulator credential.` : 'SOS alert queued for the patient.')
+        return
+      }
+
+      const measurementType = kind === 'heart_rate' ? 'heart_rate_bpm' : 'spo2_percent'
+      const value = kind === 'heart_rate' ? 142 : 82
+      const measurement = await triggerDeviceMeasurement(device.device_identifier, resolvedSecret, patient.id, measurementType, value)
+      saveDeviceSecret(device.id, resolvedSecret)
+      setSavedSecret(resolvedSecret)
+      setManualSecret('')
+      setSimulatorNotice(
+        measurement?.id
+          ? `${kind === 'heart_rate' ? 'High heart-rate alert' : 'Low SpO2 alert'} sent for ${patient.full_name}. The backend ingested it as live telemetry.`
+          : `${kind === 'heart_rate' ? 'High heart-rate alert' : 'Low SpO2 alert'} sent for the patient.`,
+      )
+    } catch (reason) {
+      setSimulatorError(reason instanceof Error ? reason.message : 'Unable to trigger the simulator alert.')
+    } finally {
+      setSendingAlert(false)
+    }
+  }
+
   if (loading) {
     return <div className="device-detail-page device-detail-page--loading">Loading device overview…</div>
   }
@@ -113,6 +172,41 @@ export function DeviceDetailPage() {
       </header>
 
       {error && <div className="page-error" role="alert">{error}</div>}
+
+      {device.device_type === 'simulator' && (
+        <section className="device-panel device-simulator" aria-label="Simulator controls">
+          <div className="device-panel__header">
+            <h2><Siren size={16} /> Simulator alert controls</h2>
+          </div>
+          <div className="device-simulator__content">
+            <p>Send a real SOS event from this simulator using the same device-authenticated flow the physical wearable uses.</p>
+            <label className="device-simulator__field">
+              Device secret
+              <input
+                type="password"
+                value={manualSecret || savedSecret}
+                placeholder="Paste the device secret here"
+                onChange={(event) => setManualSecret(event.target.value)}
+                aria-label="Device secret"
+              />
+            </label>
+            <div className="device-simulator__actions">
+              <button type="button" className="ui-btn" onClick={() => triggerSimulatorPreset('sos')} disabled={sendingAlert || !patient}>
+                {sendingAlert ? 'Sending alert…' : 'Trigger SOS alert'}
+              </button>
+              <button type="button" className="ui-btn ui-btn--ghost" onClick={() => triggerSimulatorPreset('heart_rate')} disabled={sendingAlert || !patient}>
+                Send high heart-rate alert
+              </button>
+              <button type="button" className="ui-btn ui-btn--ghost" onClick={() => triggerSimulatorPreset('spo2')} disabled={sendingAlert || !patient}>
+                Send low SpO2 alert
+              </button>
+              {savedSecret && <small className="device-simulator__hint">Saved secret is ready for this device.</small>}
+            </div>
+            {simulatorNotice && <div className="device-simulator__status device-simulator__status--success" role="status">{simulatorNotice}</div>}
+            {simulatorError && <div className="device-simulator__status device-simulator__status--error" role="alert">{simulatorError}</div>}
+          </div>
+        </section>
+      )}
 
       <section className="device-metrics" aria-label="Device metrics">
         <div className="metric-card">

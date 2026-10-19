@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { clearDeviceSecret, saveDeviceSecret } from '../../api/client'
 import { createRegistryDevice, getDeviceRegistry, getPatients, issueDeviceCredential, revokeDeviceCredential, updateRegistryDevice } from '../../api/operations'
 import type { DeviceRegistryRecord, IssuedDeviceCredential, Patient } from '../../types/api'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -224,8 +225,11 @@ export function DevicesPage() {
     setError('')
     setNotice('')
     setSecretCopied(false)
-    try { setIssued(await issueDeviceCredential(device.id)) }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to issue device credential.') }
+    try {
+      const credential = await issueDeviceCredential(device.id)
+      saveDeviceSecret(device.id, credential.secret)
+      setIssued(credential)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to issue device credential.') }
     finally { setBusyId('') }
   }
 
@@ -239,8 +243,13 @@ export function DevicesPage() {
     setConfirmRevokeId('')
     setBusyId(device.id)
     setError('')
-    try { await revokeDeviceCredential(device.id); setIssued(null); await load(); setNotice('Credential revoked. Device authentication will no longer accept it.') }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to revoke credential.') }
+    try {
+      await revokeDeviceCredential(device.id)
+      clearDeviceSecret(device.id)
+      setIssued(null)
+      await load()
+      setNotice('Credential revoked. Device authentication will no longer accept it.')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to revoke credential.') }
     finally { setBusyId('') }
   }
 

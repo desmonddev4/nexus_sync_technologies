@@ -48,6 +48,33 @@ export function clearAuthToken() {
   }
 }
 
+const DEVICE_SECRET_STORAGE_PREFIX = 'nexus-sync-device-secret:'
+
+export function readDeviceSecret(deviceId: string) {
+  try {
+    return typeof window === 'undefined' ? null : window.sessionStorage.getItem(`${DEVICE_SECRET_STORAGE_PREFIX}${deviceId}`)
+  } catch {
+    return null
+  }
+}
+
+export function saveDeviceSecret(deviceId: string, secret: string) {
+  try {
+    if (!secret) return
+    window.sessionStorage.setItem(`${DEVICE_SECRET_STORAGE_PREFIX}${deviceId}`, secret)
+  } catch {
+    // Ignore storage failures in restricted browser contexts.
+  }
+}
+
+export function clearDeviceSecret(deviceId: string) {
+  try {
+    window.sessionStorage.removeItem(`${DEVICE_SECRET_STORAGE_PREFIX}${deviceId}`)
+  } catch {
+    // Ignore storage failures in restricted browser contexts.
+  }
+}
+
 function readStoredToken(): string | null {
   try {
     return typeof window === 'undefined' ? null : window.sessionStorage.getItem(AUTH_STORAGE_KEY)
@@ -77,6 +104,62 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiError(extractErrorMessage(payload), response.status)
   }
   return payload as T
+}
+
+export async function triggerDeviceSos(deviceIdentifier: string, secret: string, patientId: string) {
+  const eventId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const response = await fetch(`${API_BASE_URL}/incidents/sos/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Device ${deviceIdentifier}:${secret}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      patient: patientId,
+      event_id: eventId,
+      trigger_source: 'simulator',
+    }),
+  })
+
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const payload: unknown = isJson ? await response.json() : await response.text()
+  if (!response.ok) {
+    throw new ApiError(extractErrorMessage(payload), response.status)
+  }
+
+  return payload as { id?: string; trigger_source?: string }
+}
+
+export async function triggerDeviceMeasurement(
+  deviceIdentifier: string,
+  secret: string,
+  patientId: string,
+  measurementType: 'heart_rate_bpm' | 'spo2_percent',
+  value: number,
+) {
+  const response = await fetch(`${API_BASE_URL}/measurements/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Device ${deviceIdentifier}:${secret}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      patient: patientId,
+      event_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      measurement_type: measurementType,
+      value,
+      unit: measurementType === 'heart_rate_bpm' ? 'bpm' : 'percent',
+      measured_at: new Date().toISOString(),
+    }),
+  })
+
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const payload: unknown = isJson ? await response.json() : await response.text()
+  if (!response.ok) {
+    throw new ApiError(extractErrorMessage(payload), response.status)
+  }
+
+  return payload as { id?: string; measurement_type?: string; value?: number }
 }
 
 function extractErrorMessage(payload: unknown) {

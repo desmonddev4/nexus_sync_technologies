@@ -4,15 +4,22 @@ import type { CurrentUser } from './types/api'
 
 const mockApiRequest = vi.fn()
 
-vi.mock('./api/client', () => ({
-  apiRequest: (...args: unknown[]) => mockApiRequest(...args),
-  getAuthToken: vi.fn(() => null),
-  saveAuthToken: vi.fn(),
-  clearAuthToken: vi.fn(),
-}))
+vi.mock('./api/client', async () => {
+  const actual = await vi.importActual<typeof import('./api/client')>('./api/client')
+  return {
+    ...actual,
+    apiRequest: (...args: unknown[]) => mockApiRequest(...args),
+    getAuthToken: vi.fn(() => null),
+    saveAuthToken: vi.fn(),
+    clearAuthToken: vi.fn(),
+    readDeviceSecret: vi.fn(() => null),
+    saveDeviceSecret: vi.fn(),
+    clearDeviceSecret: vi.fn(),
+  }
+})
 
 import App from './App'
-import { getAuthToken } from './api/client'
+import { getAuthToken, readDeviceSecret } from './api/client'
 import * as operations from './api/operations'
 
 vi.mock('./api/operations', () => ({
@@ -167,6 +174,123 @@ describe('App auth access control', () => {
 
     expect(screen.getAllByText('Ada Mensah').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/79\b/i).length).toBeGreaterThan(0)
+  })
+
+  it('lets a simulator trigger a backend SOS alert from the device view', async () => {
+    const user: CurrentUser = {
+      username: 'coordinator1',
+      role: 'emergency_coordinator',
+      can_access_operations: true,
+    }
+
+    vi.mocked(getAuthToken).mockReturnValue('token-1')
+    mockApiRequest.mockResolvedValueOnce(user).mockResolvedValueOnce([])
+    vi.mocked(operations.getDeviceRegistry).mockResolvedValue([
+      {
+        id: 'dev-1',
+        device_identifier: 'NS-SIM-001',
+        patient: 'pat-123',
+        device_type: 'simulator',
+        status: 'active',
+        firmware_version: '1.0.0',
+        battery_percent: 68,
+        last_seen_at: '2025-01-01T00:00:00Z',
+        credential_revoked: false,
+        credential_last_used_at: null,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      },
+    ])
+    vi.mocked(operations.getPatients).mockResolvedValue([
+      { id: 'pat-123', full_name: 'Ada Mensah', status: 'active', phone_number: '+233555123456', date_of_birth: null, relevant_medical_notes: '', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(operations.getPatientMeasurements).mockResolvedValue([])
+    vi.mocked(operations.getPatientLocations).mockResolvedValue([])
+
+    vi.mocked(readDeviceSecret).mockReturnValue('super-secret')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 'inc-1', trigger_source: 'simulator' }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    renderApp('/devices/dev-1')
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'NS-SIM-001' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /trigger sos alert/i }))
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/incidents/sos/'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Device NS-SIM-001:super-secret',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('lets a simulator send abnormal telemetry alerts through the device auth flow', async () => {
+    const user: CurrentUser = {
+      username: 'coordinator1',
+      role: 'emergency_coordinator',
+      can_access_operations: true,
+    }
+
+    vi.mocked(getAuthToken).mockReturnValue('token-1')
+    mockApiRequest.mockResolvedValueOnce(user).mockResolvedValueOnce([])
+    vi.mocked(operations.getDeviceRegistry).mockResolvedValue([
+      {
+        id: 'dev-2',
+        device_identifier: 'NS-SIM-002',
+        patient: 'pat-123',
+        device_type: 'simulator',
+        status: 'active',
+        firmware_version: '1.0.0',
+        battery_percent: 76,
+        last_seen_at: '2025-01-01T00:00:00Z',
+        credential_revoked: false,
+        credential_last_used_at: null,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      },
+    ])
+    vi.mocked(operations.getPatients).mockResolvedValue([
+      { id: 'pat-123', full_name: 'Ada Mensah', status: 'active', phone_number: '+233555123456', date_of_birth: null, relevant_medical_notes: '', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(operations.getPatientMeasurements).mockResolvedValue([])
+    vi.mocked(operations.getPatientLocations).mockResolvedValue([])
+    vi.mocked(readDeviceSecret).mockReturnValue('secondary-secret')
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 'm-1', measurement_type: 'heart_rate_bpm' }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    renderApp('/devices/dev-2')
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'NS-SIM-002' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /send high heart-rate alert/i }))
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/measurements/'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Device NS-SIM-002:secondary-secret',
+          }),
+          body: expect.stringContaining('heart_rate_bpm'),
+        }),
+      )
+    })
   })
 
   it('loads live wearable data from the backend when the demo route opens', async () => {
