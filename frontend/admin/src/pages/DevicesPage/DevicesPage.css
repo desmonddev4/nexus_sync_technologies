@@ -1,138 +1,481 @@
 /* ==========================================================================
    DevicesPage.css — page-specific rules (shared styles live in ui.css)
+
+   Contents
+   01. Layout & summary
+   02. Register panel (type tiles, patient picker, buttons)
+   03. Patient picker (shared by register form and device cards)
+   04. One-time credential reveal
+   05. Registry filters
+   06. Device cards
+   07. Provisioning track
+   08. Card controls & actions
+   09. Keyframes
+   10. Responsive
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   01. Layout & summary
+   -------------------------------------------------------------------------- */
 .devices-page .dv-spin { animation: ui-spin 0.9s linear infinite; }
+
+.dv-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
 
 .device-provision-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.5fr);
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.45fr);
   align-items: start;
   gap: 16px;
 }
 
 .dv-hint { margin: -6px 0 14px; }
 .dv-register { position: sticky; top: 76px; }
-.dv-form { display: grid; gap: 14px; }
-.dv-form .ui-btn { width: 100%; }
+.dv-form { display: grid; gap: 16px; }
 
-/* One-time credential reveal */
+/* --------------------------------------------------------------------------
+   02. Register panel
+   -------------------------------------------------------------------------- */
+.dv-types {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dv-type {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  padding: 12px 12px 11px;
+  color: var(--u-ink);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid var(--u-line);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.3s var(--u-spring), border-color 0.25s, box-shadow 0.3s, background 0.25s;
+}
+
+.dv-type__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 6px;
+  place-items: center;
+  color: var(--u-blue);
+  background: rgba(36, 87, 245, 0.1);
+  border-radius: 12px;
+  transition: transform 0.35s var(--u-spring), background 0.25s, color 0.25s;
+}
+
+.dv-type strong { font-size: 12.5px; }
+.dv-type small { color: var(--u-muted); font-size: 11px; line-height: 1.3; }
+
+.dv-type__tick {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: #fff;
+  background: var(--u-gradient);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.2s, transform 0.3s var(--u-spring);
+}
+
+.dv-type:hover { border-color: rgba(36, 87, 245, 0.45); transform: translateY(-3px); box-shadow: 0 12px 26px rgba(36, 87, 245, 0.14); }
+.dv-type:hover .dv-type__icon { transform: rotate(-8deg) scale(1.08); }
+
+.dv-type.is-on {
+  background: linear-gradient(135deg, rgba(63, 216, 255, 0.16), rgba(138, 68, 240, 0.12));
+  border-color: rgba(36, 87, 245, 0.7);
+  box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.16), 0 12px 26px rgba(36, 87, 245, 0.16);
+}
+
+.dv-type.is-on .dv-type__icon { color: #fff; background: var(--u-gradient); }
+.dv-type.is-on .dv-type__tick { opacity: 1; transform: scale(1); }
+
+.dv-initial { display: flex; width: 100%; }
+.dv-initial button { flex: 1; justify-content: center; text-transform: capitalize; }
+
+.dv-submit { width: 100%; min-height: 46px; font-size: 14px; }
+
+.dv-type:focus-visible,
+.pp-trigger:focus-visible,
+.pp-option:focus-visible,
+.dv-copy:focus-visible { outline: 2px solid var(--u-blue); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   03. Patient picker
+   -------------------------------------------------------------------------- */
+.pp { position: relative; }
+
+.pp-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 8px;
+  color: var(--u-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--u-line);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+
+.pp--compact .pp-trigger { min-height: 42px; }
+.pp-trigger:hover:not(:disabled) { border-color: rgba(36, 87, 245, 0.4); }
+.pp.is-open .pp-trigger { background: #fff; border-color: rgba(47, 155, 255, 0.75); box-shadow: 0 0 0 4px rgba(47, 155, 255, 0.16); }
+.pp-trigger:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.pp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-name--empty { color: var(--u-muted); font-weight: 500; }
+.pp-chevron { flex: none; color: var(--u-muted); transition: transform 0.3s var(--u-spring); }
+.pp.is-open .pp-chevron { transform: rotate(180deg); color: var(--u-blue); }
+
+.pp-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--u-gradient);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(36, 87, 245, 0.25);
+}
+
+.pp-avatar--empty { color: var(--u-muted); background: rgba(36, 87, 245, 0.08); box-shadow: none; }
+
+.pp-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--u-line);
+  border-radius: 16px;
+  box-shadow: 0 22px 50px rgba(14, 20, 51, 0.22);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  transform-origin: top center;
+  animation: pp-in 0.25s var(--u-spring) both;
+}
+
+.pp-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  color: var(--u-muted);
+  background: rgba(36, 87, 245, 0.06);
+  border-radius: 11px;
+}
+
+.pp-search input,
+.pp-search input:hover,
+.pp-search input:focus {
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.pp-pop ul { max-height: 230px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+
+.pp-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  color: var(--u-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.2s var(--u-ease);
+}
+
+.pp-option > span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-option:hover { background: rgba(36, 87, 245, 0.08); transform: translateX(2px); }
+.pp-option.is-on { color: var(--u-blue); background: rgba(36, 87, 245, 0.1); }
+.pp-none { padding: 14px 10px; color: var(--u-muted); font-size: 12.5px; text-align: center; }
+
+/* Let an open picker float above the cards below it */
+.device-row:has(.pp.is-open) { position: relative; z-index: 30; }
+.dv-register { z-index: 4; }
+.dv-register:has(.pp.is-open) { z-index: 30; }
+
+/* --------------------------------------------------------------------------
+   04. One-time credential reveal
+   -------------------------------------------------------------------------- */
 .dv-credential {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
-  gap: 14px;
-  padding: 16px 18px;
-  background: linear-gradient(100deg, rgba(255, 207, 107, 0.28), rgba(255, 160, 90, 0.14));
-  border: 1px solid rgba(224, 138, 20, 0.45);
-  border-radius: 18px;
-  box-shadow: 0 14px 34px rgba(224, 138, 20, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  gap: 16px;
+  padding: 18px 20px;
+  background:
+    radial-gradient(260px 120px at 0% 0%, rgba(255, 207, 107, 0.4), transparent 70%),
+    linear-gradient(100deg, rgba(255, 207, 107, 0.26), rgba(255, 160, 90, 0.12));
+  border: 1px solid rgba(224, 138, 20, 0.5);
+  border-radius: 20px;
+  box-shadow: 0 16px 38px rgba(224, 138, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   animation: ui-rise 0.5s var(--u-ease) both;
 }
 
 .dv-credential__icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   color: #fff;
   background: linear-gradient(135deg, #ffcf6b, #e08a14);
-  border-radius: 14px;
-  box-shadow: 0 8px 18px rgba(224, 138, 20, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(224, 138, 20, 0.4);
+  animation: dv-key 3s ease-in-out infinite;
 }
 
-.dv-credential__body strong { color: #65430a; font-size: 14px; }
-.dv-credential__body p { margin: 4px 0 10px; color: #765d2d; font-size: 12px; line-height: 1.5; }
+.dv-credential__body strong { color: #65430a; font-size: 15px; }
+.dv-credential__body p { margin: 4px 0 11px; color: #765d2d; font-size: 12.5px; line-height: 1.5; }
 
 .dv-credential code {
   display: block;
-  padding: 11px 13px;
+  padding: 12px 14px;
   overflow-wrap: anywhere;
   color: #7df0c7;
-  font: 12.5px / 1.5 var(--mono, ui-monospace, monospace);
+  font: 12.5px / 1.55 var(--mono, ui-monospace, monospace);
   background: #0a0f33;
-  border-radius: 12px;
+  border: 1px solid rgba(125, 240, 199, 0.25);
+  border-radius: 14px;
+  box-shadow: inset 0 0 24px rgba(63, 216, 255, 0.08);
   user-select: all;
 }
 
 .dv-credential__actions { display: grid; gap: 8px; }
 .dv-credential .ui-btn.is-copied { background: linear-gradient(120deg, #3fe0b0, #12875f); }
 
-/* Registry */
-.dv-controls { display: grid; gap: 10px; margin-bottom: 14px; }
+/* --------------------------------------------------------------------------
+   05. Registry filters
+   -------------------------------------------------------------------------- */
+.dv-controls { display: grid; gap: 10px; margin-bottom: 16px; }
 .dv-chips { display: flex; flex-wrap: wrap; gap: 7px; }
 
-.device-list { display: grid; gap: 12px; }
+.dv-chips .ui-chip em {
+  padding: 0 7px;
+  font-size: 11px;
+  font-style: normal;
+  background: rgba(36, 87, 245, 0.1);
+  border-radius: 999px;
+}
+
+.dv-chips .ui-chip.is-on em { background: rgba(255, 255, 255, 0.25); }
+
+.dv-dot { width: 8px; height: 8px; background: #5b6690; border-radius: 50%; }
+.dv-chip--registered .dv-dot { background: #2f7bff; }
+.dv-chip--active .dv-dot { background: #22b887; box-shadow: 0 0 8px #22b887; }
+.dv-chip--inactive .dv-dot { background: #98a2c4; }
+.dv-chip--revoked .dv-dot { background: #ff6b7d; }
+.dv-chips .ui-chip.is-on .dv-dot { background: #fff; box-shadow: none; }
+
+/* --------------------------------------------------------------------------
+   06. Device cards
+   -------------------------------------------------------------------------- */
+.device-list { display: grid; gap: 14px; }
 
 .device-row {
+  --edge: #2f7bff;
   display: grid;
-  gap: 14px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.85);
+  gap: 16px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--u-line);
-  border-radius: 18px;
+  border-radius: 20px;
+  box-shadow: inset 4px 0 0 var(--edge), 0 8px 22px rgba(14, 20, 51, 0.04);
   animation: ui-rise 0.5s var(--u-ease) both;
   transition: transform 0.3s var(--u-ease), box-shadow 0.3s, border-color 0.3s, opacity 0.3s;
 }
 
-.device-row:hover { border-color: rgba(36, 87, 245, 0.35); box-shadow: 0 14px 32px rgba(36, 87, 245, 0.11); transform: translateY(-2px); }
+.dv-status-active { --edge: #22b887; }
+.dv-status-inactive { --edge: #98a2c4; }
+.dv-status-revoked { --edge: #ff6b7d; }
+
+.device-row:hover {
+  border-color: rgba(36, 87, 245, 0.35);
+  box-shadow: inset 4px 0 0 var(--edge), 0 16px 36px rgba(36, 87, 245, 0.12);
+  transform: translateY(-2px);
+}
+
 .device-row.is-busy { opacity: 0.65; }
 
-.device-row__head { display: flex; align-items: flex-start; gap: 12px; }
+.device-row__head { display: flex; align-items: flex-start; gap: 13px; }
 .device-row__head > div { display: grid; flex: 1; gap: 4px; min-width: 0; }
-.device-row__head strong { color: var(--u-ink); font-size: 14.5px; overflow-wrap: anywhere; }
+
+.device-row__head strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--u-ink);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
 .device-row__head small { color: var(--u-muted); font-size: 11.5px; text-transform: capitalize; }
 
 .dv-type-icon {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   flex: none;
   place-items: center;
   color: #fff;
   background: linear-gradient(135deg, #3fd8ff, #2457f5 60%, #8a44f0);
-  border-radius: 14px;
-  box-shadow: 0 8px 18px rgba(36, 87, 245, 0.28);
+  border-radius: 15px;
+  box-shadow: 0 10px 22px rgba(36, 87, 245, 0.3);
   transition: transform 0.4s var(--u-spring);
 }
 
 .device-row:hover .dv-type-icon { transform: rotate(-6deg) scale(1.08); }
 
-/* Provisioning progress */
-.dv-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.dv-steps li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 11px;
+.dv-copy {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
   color: var(--u-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-  background: rgba(36, 87, 245, 0.06);
-  border-radius: 999px;
+  background: rgba(36, 87, 245, 0.07);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, background 0.2s, transform 0.25s var(--u-spring);
 }
 
-.dv-steps li span { width: 10px; height: 10px; border: 2px solid rgba(36, 87, 245, 0.3); border-radius: 50%; }
+.device-row:hover .dv-copy,
+.dv-copy:focus-visible { opacity: 1; }
+.dv-copy:hover { color: #fff; background: var(--u-blue); transform: scale(1.1); }
 
-.dv-steps li.is-done { color: #0f7a55; background: rgba(34, 184, 135, 0.14); }
-.dv-steps li.is-done svg { animation: ui-pop 0.35s var(--u-spring) both; }
+/* --------------------------------------------------------------------------
+   07. Provisioning track
+   -------------------------------------------------------------------------- */
+.dv-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 14px 8px 12px;
+  list-style: none;
+  background: rgba(36, 87, 245, 0.045);
+  border-radius: 16px;
+}
 
-.device-row__controls { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 12px; }
+.dv-track li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--u-muted);
+  text-align: center;
+}
+
+/* connector between nodes */
+.dv-track li::before {
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  left: -50%;
+  height: 3px;
+  background: rgba(36, 87, 245, 0.15);
+  border-radius: 2px;
+  content: '';
+}
+
+.dv-track li:first-child::before { display: none; }
+.dv-track li.is-done::before,
+.dv-track li.is-ready::before { background: var(--u-gradient); }
+
+.dv-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--u-muted);
+  background: #fff;
+  border: 2px solid rgba(36, 87, 245, 0.2);
+  border-radius: 50%;
+  transition: transform 0.3s var(--u-spring);
+}
+
+.dv-track li strong { margin-top: 5px; color: var(--u-ink); font-size: 12px; }
+.dv-track li small { max-width: 100%; overflow: hidden; color: var(--u-muted); font-size: 10.5px; line-height: 1.3; text-overflow: ellipsis; }
+
+.dv-track li.is-done .dv-node { color: #fff; background: #12a374; border-color: #12a374; }
+.dv-track li.is-done .dv-node svg { animation: ui-pop 0.35s var(--u-spring) both; }
+
+.dv-track li.is-ready .dv-node {
+  color: #fff;
+  background: var(--u-gradient);
+  border-color: transparent;
+  animation: dv-ready 2.2s ease-in-out infinite;
+}
+
+.dv-track li.is-ready strong { color: var(--u-blue); }
+.dv-track li.is-locked .dv-node { border-style: dashed; }
+
+/* --------------------------------------------------------------------------
+   08. Card controls & actions
+   -------------------------------------------------------------------------- */
+.device-row__controls { display: grid; grid-template-columns: 1fr 1.25fr; align-items: start; gap: 12px; }
 
 .dv-status { display: flex; width: 100%; }
-.dv-status button { flex: 1; justify-content: center; padding: 0 6px; font-size: 11.5px; text-transform: capitalize; }
+.dv-status button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; text-transform: capitalize; }
 .dv-status button:disabled { cursor: not-allowed; }
 
 .device-row__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .dv-cred-state { margin-left: auto; color: var(--u-muted); font-size: 11.5px; }
+
+/* Distinct "key" button for issuing credentials */
+.dv-issue {
+  background: linear-gradient(120deg, #ffb347, #ff7a59 55%, #e0457b);
+  background-size: 220% 100%;
+  box-shadow: 0 10px 22px rgba(255, 122, 89, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.dv-issue:hover:not(:disabled) {
+  box-shadow: 0 14px 30px rgba(255, 122, 89, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.dv-issue:hover:not(:disabled) svg { transform: rotate(-35deg) scale(1.15); }
 
 .ui-btn--danger.is-armed {
   color: #fff;
@@ -141,22 +484,50 @@
   animation: dv-armed 0.8s ease-in-out infinite;
 }
 
-.dv-empty { margin: 0; padding: 28px 8px; color: var(--u-muted); font-size: 13px; text-align: center; }
+/* --------------------------------------------------------------------------
+   09. Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes pp-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dv-ready {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(47, 155, 255, 0.2), 0 6px 16px rgba(36, 87, 245, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(47, 155, 255, 0.06), 0 6px 16px rgba(36, 87, 245, 0.4); }
+}
+
+@keyframes dv-key {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-10deg) scale(1.05); }
+}
 
 @keyframes dv-armed {
   0%, 100% { box-shadow: 0 10px 22px rgba(224, 71, 97, 0.4); }
   50% { box-shadow: 0 10px 22px rgba(224, 71, 97, 0.4), 0 0 0 5px rgba(224, 71, 97, 0.2); }
 }
 
+/* --------------------------------------------------------------------------
+   10. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  .dv-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .device-provision-grid { grid-template-columns: 1fr; }
-  .dv-register { position: static; }
+  .dv-register { position: relative; top: auto; }
   .dv-credential { grid-template-columns: auto minmax(0, 1fr); }
   .dv-credential__actions { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 620px) {
+  .dv-metrics { grid-template-columns: 1fr; }
+  .dv-types { grid-template-columns: 1fr 1fr; }
+  .dv-track { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+  .dv-track li:nth-child(3)::before { display: none; }
   .device-row__controls { grid-template-columns: 1fr; }
   .dv-credential { grid-template-columns: 1fr; }
   .dv-cred-state { width: 100%; margin-left: 0; }
+  .dv-copy { opacity: 1; }
 }
