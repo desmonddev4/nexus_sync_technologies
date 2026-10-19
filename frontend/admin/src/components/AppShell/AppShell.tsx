@@ -111,22 +111,29 @@ function playAlertTone() {
 
   try {
     const audioContext = new AudioCtor()
-    const oscillator = audioContext.createOscillator()
+    const oscillatorA = audioContext.createOscillator()
+    const oscillatorB = audioContext.createOscillator()
     const gain = audioContext.createGain()
 
-    oscillator.type = 'sawtooth'
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
-    oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.32)
+    oscillatorA.type = 'sawtooth'
+    oscillatorB.type = 'square'
+    oscillatorA.frequency.setValueAtTime(980, audioContext.currentTime)
+    oscillatorA.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.28)
+    oscillatorB.frequency.setValueAtTime(640, audioContext.currentTime)
+    oscillatorB.frequency.exponentialRampToValueAtTime(240, audioContext.currentTime + 0.35)
 
     gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.48)
+    gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7)
 
-    oscillator.connect(gain)
+    oscillatorA.connect(gain)
+    oscillatorB.connect(gain)
     gain.connect(audioContext.destination)
 
-    oscillator.start()
-    oscillator.stop(audioContext.currentTime + 0.5)
+    oscillatorA.start()
+    oscillatorB.start()
+    oscillatorA.stop(audioContext.currentTime + 0.7)
+    oscillatorB.stop(audioContext.currentTime + 0.7)
     void audioContext.resume()
   } catch {
     // Browser audio restrictions can be ignored when the device does not allow autoplay.
@@ -201,7 +208,7 @@ function AlertToastCenter() {
     }
 
     void pollAlerts()
-    const timer = window.setInterval(() => { void pollAlerts() }, 15_000)
+    const timer = window.setInterval(() => { void pollAlerts() }, 4_000)
     return () => {
       active = false
       window.clearInterval(timer)
@@ -216,6 +223,7 @@ function AlertToastCenter() {
 
   return (
     <div className="alert-toast-layer" aria-live="assertive" aria-atomic="true">
+      <div className="alert-toast-backdrop" aria-hidden="true" />
       {toasts.map((toast) => (
         <div key={toast.id} className={`alert-toast alert-toast--${toast.priority}`} role="alert">
           <div className="alert-toast__topbar">
