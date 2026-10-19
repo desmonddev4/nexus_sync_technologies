@@ -115,6 +115,21 @@ describe('IncidentDetailPage workflows', () => {
     })
   })
 
+  it('shows cancel option after an incident is acknowledged', async () => {
+    mockGetIncident
+      .mockResolvedValueOnce({ ...baseIncident, status: 'acknowledged' })
+      .mockResolvedValueOnce({ ...baseIncident, status: 'cancelled' })
+
+    renderDetailPage()
+
+    const cancelButton = await screen.findByRole('button', { name: 'Cancel alert' })
+    fireEvent.click(cancelButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/cancelled/i)).toBeInTheDocument()
+    })
+  })
+
   it('records dispatch confirmation reference for dispatch requested incident', async () => {
     const dispatchRequested = {
       ...baseIncident,

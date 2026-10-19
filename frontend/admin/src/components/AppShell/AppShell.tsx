@@ -269,14 +269,10 @@ function AlertToastCenter() {
     }
   }, [toasts.length])
 
-  const dismissToast = async (id: string) => {
+  const dismissToast = (id: string, nextStatus: 'resolved' | 'cancelled' = 'resolved') => {
     const toast = toasts.find((item) => item.id === id)
     if (toast) {
-      try {
-        await advanceIncident(toast.incidentId, 'resolved')
-      } catch {
-        // continue dismissing the toast even if the backend request fails
-      }
+      void advanceIncident(toast.incidentId, nextStatus).catch(() => undefined)
     }
 
     setToasts((current) => current.filter((toastItem) => toastItem.id !== id))
@@ -318,11 +314,14 @@ function AlertToastCenter() {
           <p className="alert-toast__detail">{toast.detail}</p>
 
           <div className="alert-toast__actions">
-            <Link to="/incidents" className="alert-toast__open" onClick={() => dismissToast(toast.id)}>
+            <Link to="/incidents" className="alert-toast__open" onClick={() => dismissToast(toast.id, 'resolved')}>
               Open incident queue
             </Link>
-            <button type="button" className="alert-toast__resolve" onClick={() => void dismissToast(toast.id)}>
+            <button type="button" className="alert-toast__resolve" onClick={() => void dismissToast(toast.id, 'resolved')}>
               Mark resolved
+            </button>
+            <button type="button" className="alert-toast__cancel" onClick={() => void dismissToast(toast.id, 'cancelled')}>
+              Cancel alert
             </button>
           </div>
         </div>

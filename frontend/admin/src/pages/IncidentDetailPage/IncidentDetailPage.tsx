@@ -7,10 +7,15 @@ import { StatusBadge } from '../../components/StatusBadge/StatusBadge'
 import './IncidentDetailPage.css'
 
 const nextStatuses: Partial<Record<Incident['status'], Incident['status'][]>> = {
+  created: ['acknowledged', 'cancelled'],
+  acknowledged: ['responder_assigned', 'resolved', 'cancelled'],
+  responder_assigned: ['dispatch_requested', 'declined', 'cancelled'],
+  dispatch_requested: ['dispatch_confirmed', 'declined'],
   dispatch_confirmed: ['responder_en_route'],
   responder_en_route: ['arrived'],
   arrived: ['resolved'],
   resolved: ['closed'],
+  declined: ['acknowledged'],
 }
 
 /** The standard response path, in order. Wording matches StatusBadge so nothing implies more than was recorded. */
@@ -194,6 +199,9 @@ export function IncidentDetailPage() {
                 </form>
               )}
               {statusActions.map((next) => <button key={next} type="button" className={`ui-btn${busy ? ' is-busy' : ''}`} disabled={busy} onClick={() => void runAction(() => advanceIncident(incident.id, next))}>Mark {words(next)}</button>)}
+              {!['closed', 'cancelled'].includes(incident.status) && (
+                <button type="button" className={`ui-btn ui-btn--soft${busy ? ' is-busy' : ''}`} disabled={busy} onClick={() => void runAction(() => advanceIncident(incident.id, 'cancelled'))}>Cancel alert</button>
+              )}
             </div>
 
             {incident.status === 'responder_assigned' && (
