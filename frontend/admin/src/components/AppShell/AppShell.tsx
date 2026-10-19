@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
   Ambulance,
@@ -13,11 +13,15 @@ import {
   Siren,
   UserCog,
   Users,
+  BellRing,
+  X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import nstLogo from '../../assets/NST LOGO.png'
+import { getIncidents, getPatients } from '../../api/operations'
+import type { Incident, Patient } from '../../types/api'
 import './AppShell.css'
 
 /* ------------------------------------------------------------------ */
@@ -90,6 +94,169 @@ function useClock() {
   return now
 }
 
+interface AlertToastEntry {
+  id: string
+  title: string
+  patientName: string
+  locationLabel: string
+  detail: string
+  priority: 'critical' | 'high' | 'medium' | 'low'
+}
+
+function playAlertTone() {
+  if (typeof window === 'undefined') return
+
+  const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!AudioCtor) return
+
+  try {
+    const audioContext = new AudioCtor()
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+
+    oscillator.type = 'sawtooth'
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+    oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.32)
+
+    gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.48)
+
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+
+    oscillator.start()
+    oscillator.stop(audioContext.currentTime + 0.5)
+    void audioContext.resume()
+  } catch {
+    // Browser audio restrictions can be ignored when the device does not allow autoplay.
+  }
+}
+
+function getIncidentTitle(incident: Incident) {
+  return incident.incident_type.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function getLocationSummary(incident: Incident) {
+  if (!incident.location) {
+    return 'No active location'
+  }
+
+  if (incident.location.is_stale) {
+    return 'Location stale'
+  }
+
+  return 'Location active'
+}
+
+function AlertToastCenter() {
+  const [toasts, setToasts] = useState<AlertToastEntry[]>([])
+  const seenIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    let active = true
+
+    const pollAlerts = async () => {
+      try {
+        const [incidents, patients] = await Promise.all([getIncidents(), getPatients()])
+        if (!active) return
+
+        const patientMap = new Map<string, Patient>(patients.map((patient) => [patient.id, patient]))
+        const freshIncidents = incidents.filter((incident) => {
+          const isActive = !['resolved', 'closed', 'cancelled', 'declined'].includes(incident.status)
+          return isActive && !seenIdsRef.current.has(incident.id)
+        })
+
+        if (freshIncidents.length === 0) {
+          const knownIds = new Set(incidents.map((incident) => incident.id))
+          seenIdsRef.current = knownIds
+          return
+        }
+
+        playAlertTone()
+
+        const newToasts = freshIncidents.slice(0, 3).map((incident) => {
+          const patient = patientMap.get(incident.patient)
+          return {
+            id: incident.id,
+            title: getIncidentTitle(incident),
+            patientName: patient?.full_name || 'Unknown patient',
+            locationLabel: getLocationSummary(incident),
+            detail: `${incident.trigger_source.toUpperCase()} alert • ${incident.priority.toUpperCase()} priority • ${incident.location ? 'Latest coordinates are live and tracked.' : 'No current location was available for this incident.'}`,
+            priority: incident.priority as AlertToastEntry['priority'],
+          }
+        })
+
+        setToasts((current) => [...newToasts, ...current].slice(0, 3))
+        freshIncidents.forEach((incident) => seenIdsRef.current.add(incident.id))
+
+        newToasts.forEach((toast) => {
+          window.setTimeout(() => {
+            setToasts((current) => current.filter((item) => item.id !== toast.id))
+          }, 12_000)
+        })
+      } catch {
+        // Ignore background polling failures; the incident queue remains the source of truth.
+      }
+    }
+
+    void pollAlerts()
+    const timer = window.setInterval(() => { void pollAlerts() }, 15_000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  const dismissToast = (id: string) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id))
+  }
+
+  if (toasts.length === 0) return null
+
+  return (
+    <div className="alert-toast-layer" aria-live="assertive" aria-atomic="true">
+      {toasts.map((toast) => (
+        <div key={toast.id} className={`alert-toast alert-toast--${toast.priority}`} role="alert">
+          <div className="alert-toast__topbar">
+            <div className="alert-toast__label">
+              <BellRing size={14} aria-hidden="true" />
+              <span>Alert received</span>
+            </div>
+            <button type="button" className="alert-toast__close" onClick={() => dismissToast(toast.id)} aria-label="Dismiss alert alert">
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="alert-toast__header">
+            <strong>{toast.title}</strong>
+            <span className="alert-toast__pill">{toast.priority}</span>
+          </div>
+
+          <dl className="alert-toast__details">
+            <div>
+              <dt>Patient</dt>
+              <dd>{toast.patientName}</dd>
+            </div>
+            <div>
+              <dt>Location status</dt>
+              <dd>{toast.locationLabel}</dd>
+            </div>
+          </dl>
+
+          <p className="alert-toast__detail">{toast.detail}</p>
+
+          <div className="alert-toast__actions">
+            <Link to="/incidents" className="alert-toast__open" onClick={() => dismissToast(toast.id)}>
+              Open incident queue
+            </Link>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -104,6 +271,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <AlertToastCenter />
       <aside className="app-sidebar">
         <div className="app-brand">
           <span className="app-brand__mark">

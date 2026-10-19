@@ -23,6 +23,7 @@ import { getAuthToken, readDeviceSecret } from './api/client'
 import * as operations from './api/operations'
 
 vi.mock('./api/operations', () => ({
+  getIncidents: vi.fn(),
   getPatients: vi.fn(),
   getPatient: vi.fn(),
   getPatientMeasurements: vi.fn(),
@@ -40,6 +41,8 @@ describe('App auth access control', () => {
   beforeEach(() => {
     mockApiRequest.mockReset()
     vi.mocked(getAuthToken).mockReturnValue(null)
+    vi.mocked(operations.getIncidents).mockResolvedValue([])
+    vi.mocked(operations.getPatients).mockResolvedValue([])
   })
 
   it('shows login page when unauthenticated on protected route', async () => {
@@ -293,6 +296,62 @@ describe('App auth access control', () => {
     })
   })
 
+  it('shows a glass alert toast with patient and location details for a new incident', async () => {
+    const user: CurrentUser = {
+      username: 'coordinator1',
+      role: 'emergency_coordinator',
+      can_access_operations: true,
+    }
+
+    vi.mocked(getAuthToken).mockReturnValue('token-1')
+    mockApiRequest.mockResolvedValueOnce(user).mockResolvedValueOnce([])
+    vi.mocked(operations.getIncidents).mockResolvedValue([
+      {
+        id: 'inc-900',
+        patient: 'pat-123',
+        source_event_id: 'evt-900',
+        incident_type: 'high_heart_rate',
+        priority: 'critical',
+        trigger_source: 'simulator',
+        status: 'created',
+        location: {
+          latitude: '5.6508',
+          longitude: '-0.1869',
+          accuracy_meters: '12',
+          source: 'gps',
+          quality: 'good',
+          recorded_at: '2025-01-01T00:00:00Z',
+          received_at: '2025-01-01T00:00:00Z',
+          age_seconds: 15,
+          is_stale: false,
+        },
+        assigned_vehicle: null,
+        assigned_vehicle_identifier: null,
+        assigned_provider_name: null,
+        assigned_vehicle_source: null,
+        assigned_operator: null,
+        is_simulated_dispatch: true,
+        dispatch_requested_at: null,
+        dispatch_confirmed_at: null,
+        dispatch_confirmation_reference: '',
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      },
+    ])
+    vi.mocked(operations.getPatients).mockResolvedValue([
+      { id: 'pat-123', full_name: 'Ada Mensah', status: 'active', phone_number: '+233555123456', date_of_birth: null, relevant_medical_notes: '', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+    ])
+
+    renderApp('/')
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada Mensah')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/location status/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /open incident queue/i })).toBeInTheDocument()
+  })
+
   it('loads live wearable data from the backend when the demo route opens', async () => {
     const user: CurrentUser = {
       username: 'coordinator1',
@@ -319,7 +378,7 @@ describe('App auth access control', () => {
     renderApp('/demo')
 
     await waitFor(() => {
-      expect(operations.getPatients).toHaveBeenCalledTimes(1)
+      expect(operations.getPatients).toHaveBeenCalled()
     })
 
     await waitFor(() => {
