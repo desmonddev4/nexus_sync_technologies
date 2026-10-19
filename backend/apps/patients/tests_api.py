@@ -78,6 +78,31 @@ class PatientApiAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_patient_cannot_create_patient_records(self):
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            "/api/v1/patients/",
+            {"full_name": "Unauthorized Patient"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Patient.objects.filter(full_name="Unauthorized Patient").exists())
+
+    def test_coordinator_can_create_patient_record_and_audit_it(self):
+        self.client.force_authenticate(self.coordinator)
+
+        response = self.client.post(
+            "/api/v1/patients/",
+            {"full_name": "Newly Enrolled Patient", "phone_number": "+233200000020"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["full_name"], "Newly Enrolled Patient")
+        self.assertTrue(AuditLog.objects.filter(action="patient.created", actor=self.coordinator).exists())
+
     def test_patient_detail_includes_contacts_and_consent_history(self):
         EmergencyContact.objects.create(
             patient=self.patient,

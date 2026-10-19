@@ -60,7 +60,7 @@ python manage.py runserver
 
 The development settings use SQLite by default so the API can be started locally without external services. To use PostgreSQL, set `DB_ENGINE=postgresql` and configure the `DB_*` values in `backend/.env`. Never commit `.env` or real credentials.
 
-Create user accounts and assign their `AccountProfile` roles through trusted admin provisioning. There is no public user-registration endpoint.
+Provision staff accounts through the coordinator/superuser-only Accounts page or the trusted Django management interface; there is no public user-registration endpoint. Emergency coordinators and superusers can create patient records, register/assign devices, and issue or revoke device credentials in the dashboard. Device secrets are hashed at rest and shown only once at issuance. New provider/facility records remain unverified until a coordinator records a verification source; provider fleet-feed authorization is a separate, deliberately non-self-service approval gate.
 
 ## Deployment on Render and Vercel
 
@@ -111,13 +111,19 @@ Application endpoints require authentication except health and token login. The 
 | --- | --- | --- |
 | `POST` | `/api/v1/auth/token/` | Obtain a user token |
 | `GET` | `/api/v1/auth/me/` | Return current username, role, and operations-access flag |
+| `GET`, `POST`, `PATCH` | `/api/v1/accounts/` | Coordinator/superuser account and role administration |
 | `GET` | `/api/v1/health/` | JSON service health |
 | `POST` | `/api/v1/devices/heartbeat/` | Update device health using device credentials |
 | `GET`, `POST` | `/api/v1/patients/` | List or create patients |
 | `GET`, `PATCH`, `PUT` | `/api/v1/patients/{id}/` | Read or update a patient |
+| `GET`, `POST`, `PATCH` | `/api/v1/device-registry/` | Coordinator/superuser device registry, assignment, and status management |
+| `POST` | `/api/v1/device-registry/{id}/issue-credential/` | Issue or rotate a device credential (plaintext returned once) |
+| `POST` | `/api/v1/device-registry/{id}/revoke-credential/` | Revoke the active device credential |
 | `GET` | `/api/v1/providers/` | List verified emergency providers for operations staff |
 | `GET` | `/api/v1/facilities/` | List verified healthcare facilities for operations staff |
 | `GET` | `/api/v1/vehicles/` | List vehicles belonging to verified providers |
+| `GET`, `POST`, `PATCH` | `/api/v1/directory/providers/`, `/facilities/`, `/vehicles/` | Coordinator/superuser directory management; new records are pending and provider-sourced vehicles require separate fleet-feed authorization |
+| `POST` | `/api/v1/directory/providers/{id}/verify/`, `/facilities/{id}/verify/` | Record a verification source and audit provider/facility verification |
 | `GET` | `/api/v1/vehicles/nearby/?latitude={lat}&longitude={lon}` | List fresh, available live vehicles nearest to a location |
 | `POST` | `/api/v1/measurements/` | Ingest one sourced measurement |
 | `GET` | `/api/v1/measurements/review/` | List measurement-quality review queue (clinician/superuser only) |

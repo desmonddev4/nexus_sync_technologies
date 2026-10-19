@@ -3,6 +3,8 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.patients.models import Patient
+
 from .models import Device
 
 
@@ -49,3 +51,44 @@ class DeviceHealthSerializer(serializers.ModelSerializer):
         if credential is None:
             return None
         return credential.revoked_at is not None
+
+
+class DeviceManagementSerializer(serializers.ModelSerializer):
+    patient = serializers.PrimaryKeyRelatedField(
+        queryset=Patient.objects.all(), allow_null=True, required=False
+    )
+    credential_revoked = serializers.SerializerMethodField()
+    credential_last_used_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Device
+        fields = (
+            "id",
+            "device_identifier",
+            "patient",
+            "device_type",
+            "status",
+            "firmware_version",
+            "battery_percent",
+            "last_seen_at",
+            "credential_revoked",
+            "credential_last_used_at",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "firmware_version",
+            "battery_percent",
+            "last_seen_at",
+            "created_at",
+            "updated_at",
+        )
+
+    def get_credential_revoked(self, obj):
+        credential = getattr(obj, "credential", None)
+        return credential is None or credential.revoked_at is not None
+
+    def get_credential_last_used_at(self, obj):
+        credential = getattr(obj, "credential", None)
+        return credential.last_used_at if credential else None

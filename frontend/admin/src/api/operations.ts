@@ -4,12 +4,15 @@ import type {
   AuditLogEntry,
   CurrentUser,
   DeviceHealth,
+  DeviceRegistryRecord,
   EmergencyProvider,
+  FacilityDirectoryRecord,
   EscalationPolicy,
   HealthcareFacility,
   Incident,
   IncidentEvent,
   IncidentNotification,
+  IssuedDeviceCredential,
   Measurement,
   MeasurementQualityReview,
   MonitoringRule,
@@ -17,6 +20,8 @@ import type {
   NearbyVehicle,
   Patient,
   PatientLocation,
+  ProviderDirectoryRecord,
+  VehicleDirectoryRecord,
 } from '../types/api'
 
 export function getCurrentUser() { return apiRequest<CurrentUser>('auth/me/') }
@@ -72,6 +77,9 @@ export function calculateRoute(id: string) {
 }
 
 export function getPatients() { return apiRequest<Patient[]>('patients/') }
+export function createPatient(payload: Pick<Patient, 'full_name' | 'phone_number' | 'status'> & { date_of_birth?: string | null; relevant_medical_notes?: string }) {
+  return apiRequest<Patient>('patients/', { method: 'POST', body: JSON.stringify(payload) })
+}
 export function getPatientMeasurements(id: string, limit = 20) {
   return apiRequest<Measurement[]>(`patients/${id}/measurements/?limit=${limit}`)
 }
@@ -80,6 +88,38 @@ export function getPatientLocations(id: string, limit = 20) {
 }
 export function getPatientDevices(id: string) {
   return apiRequest<DeviceHealth[]>(`patients/${id}/devices/`)
+}
+export function getDeviceRegistry() { return apiRequest<DeviceRegistryRecord[]>('device-registry/') }
+export function createRegistryDevice(payload: { device_identifier: string; device_type: string; patient: string | null; status: string }) {
+  return apiRequest<DeviceRegistryRecord>('device-registry/', { method: 'POST', body: JSON.stringify(payload) })
+}
+export function updateRegistryDevice(id: string, payload: { patient?: string | null; status?: string }) {
+  return apiRequest<DeviceRegistryRecord>(`device-registry/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+export function issueDeviceCredential(id: string) {
+  return apiRequest<IssuedDeviceCredential>(`device-registry/${id}/issue-credential/`, { method: 'POST' })
+}
+export function revokeDeviceCredential(id: string) {
+  return apiRequest<DeviceRegistryRecord>(`device-registry/${id}/revoke-credential/`, { method: 'POST' })
+}
+
+export function getManagedProviders() { return apiRequest<ProviderDirectoryRecord[]>('directory/providers/') }
+export function createManagedProvider(payload: Partial<ProviderDirectoryRecord> & { name: string; provider_type: string }) {
+  return apiRequest<ProviderDirectoryRecord>('directory/providers/', { method: 'POST', body: JSON.stringify(payload) })
+}
+export function verifyManagedProvider(id: string, verification_source: string) {
+  return apiRequest<ProviderDirectoryRecord>(`directory/providers/${id}/verify/`, { method: 'POST', body: JSON.stringify({ verification_source }) })
+}
+export function getManagedFacilities() { return apiRequest<FacilityDirectoryRecord[]>('directory/facilities/') }
+export function createManagedFacility(payload: Partial<FacilityDirectoryRecord> & { name: string; facility_type: string; latitude: string; longitude: string }) {
+  return apiRequest<FacilityDirectoryRecord>('directory/facilities/', { method: 'POST', body: JSON.stringify(payload) })
+}
+export function verifyManagedFacility(id: string, verification_source: string) {
+  return apiRequest<FacilityDirectoryRecord>(`directory/facilities/${id}/verify/`, { method: 'POST', body: JSON.stringify({ verification_source }) })
+}
+export function getManagedVehicles() { return apiRequest<VehicleDirectoryRecord[]>('directory/vehicles/') }
+export function createManagedVehicle(payload: { provider: string; vehicle_identifier: string; capabilities: string[]; data_source: string; availability: string }) {
+  return apiRequest<VehicleDirectoryRecord>('directory/vehicles/', { method: 'POST', body: JSON.stringify(payload) })
 }
 export function getMonitoringRules() {
   return apiRequest<MonitoringRule[]>('monitoring/rules/')

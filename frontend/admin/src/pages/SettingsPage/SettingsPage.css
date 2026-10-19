@@ -1,22 +1,134 @@
-.settings-page { display: grid; gap: 16px; }
-.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
-.page-eyebrow { margin: 0 0 8px; color: var(--muted); font: 500 9px var(--mono); letter-spacing: .08em; }
-.page-heading h1 { margin: 0; color: var(--ink); font: 600 28px var(--display); }
-.page-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-.settings-meta { padding: 7px 9px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 4px; font: 10px var(--mono); }
-.detail-panel { min-width: 0; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
-.detail-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.detail-panel h2 { margin: 0; color: var(--ink); font: 600 16px var(--display); }
-.settings-form { display: grid; gap: 10px; }
-.settings-form label { display: grid; gap: 6px; color: var(--ink); font-size: 11px; }
-.settings-form input, .settings-form textarea { min-height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; }
-.settings-form textarea { min-height: 90px; padding: 8px 9px; resize: vertical; }
-.checkbox-row { display: inline-flex !important; align-items: center; gap: 7px; color: var(--muted) !important; }
-.checkbox-row input { min-height: 0; }
-.settings-form button { display: inline-flex; width: fit-content; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; color: #fff; background: var(--forest); border: 0; border-radius: 4px; font-size: 11px; font-weight: 600; }
-.settings-form button:hover:not(:disabled) { background: var(--green); }
-.page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
-.settings-loading { padding: 25px; color: var(--muted); font: 11px var(--mono); }
-@media (max-width: 640px) {
-  .detail-panel { padding: 12px; }
+/* ==========================================================================
+   SettingsPage.css — page-specific rules (shared styles live in ui.css)
+   ========================================================================== */
+
+.settings-form { display: grid; gap: 16px; padding-bottom: 80px; }
+
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.policy-number {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(36, 87, 245, 0.05);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  transition: border-color 0.25s, background 0.25s, transform 0.25s var(--u-ease);
+}
+
+.policy-number:hover,
+.policy-number:focus-within {
+  background: rgba(63, 216, 255, 0.1);
+  border-color: rgba(63, 216, 255, 0.45);
+  transform: translateY(-2px);
+}
+
+.policy-number__label { color: var(--u-ink); font-size: 12.5px; font-weight: 600; line-height: 1.35; }
+
+.policy-number__row { display: flex; align-items: baseline; gap: 8px; }
+
+.policy-number__row input {
+  width: 96px;
+  padding: 0;
+  color: var(--u-ink);
+  font: 800 34px / 1.1 var(--display, system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.policy-number__row input:focus { border-bottom-color: var(--u-blue); }
+.policy-number__row em { color: var(--u-muted); font-size: 12.5px; font-style: normal; font-weight: 600; }
+
+/* Slider with a gradient fill up to the thumb */
+.policy-range {
+  width: 100%;
+  height: 8px;
+  margin: 2px 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(90deg, var(--u-blue) var(--pct, 0%), rgba(36, 87, 245, 0.16) var(--pct, 0%));
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.policy-range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #fff;
+  border: 3px solid var(--u-blue);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(36, 87, 245, 0.4);
+  transition: transform 0.2s var(--u-spring);
+}
+
+.policy-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border: 3px solid var(--u-blue);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(36, 87, 245, 0.4);
+}
+
+.policy-range:hover::-webkit-slider-thumb,
+.policy-range:active::-webkit-slider-thumb { transform: scale(1.18); }
+.policy-range:focus-visible { outline: 2px solid var(--u-blue); outline-offset: 4px; }
+
+.policy-number__scale { display: flex; justify-content: space-between; color: var(--u-muted); font-size: 11px; }
+
+.policy-switches { display: grid; gap: 16px; }
+
+/* Floating save bar */
+.settings-bar {
+  position: sticky;
+  bottom: 18px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 18px;
+  color: #eef2ff;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(9, 13, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(4, 6, 24, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  opacity: 0;
+  transform: translateY(24px);
+  pointer-events: none;
+  transition: opacity 0.35s var(--u-ease), transform 0.45s var(--u-spring);
+}
+
+.settings-bar.is-visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.settings-bar.is-saved { color: #7df0c7; }
+.settings-bar > div { display: flex; gap: 8px; }
+
+.settings-bar .ui-btn--ghost {
+  color: #eef2ff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.settings-bar .ui-btn--ghost:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, 0.16); }
+
+@media (max-width: 720px) {
+  .policy-grid { grid-template-columns: 1fr; }
+  .settings-bar { flex-direction: column; align-items: stretch; text-align: center; }
+  .settings-bar > div { justify-content: center; }
 }

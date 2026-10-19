@@ -20,3 +20,17 @@ class IsEmergencyOperationsStaff(BasePermission):
         except AccountProfile.DoesNotExist:
             return False
         return profile.role in self.allowed_roles
+
+
+class CanManageEmergencyDirectory(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        try:
+            profile = user.profile
+        except AccountProfile.DoesNotExist:
+            return False
+        return profile.role == AccountProfile.Role.EMERGENCY_COORDINATOR

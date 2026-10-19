@@ -108,7 +108,7 @@ describe('IncidentsPage', () => {
     const table = screen.getByRole('table')
     expect(within(table).queryByText('rule alert')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Closed' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Closed/ }))
 
     expect(within(table).getByText('rule alert')).toBeInTheDocument()
     expect(within(table).queryByText('fall detected')).not.toBeInTheDocument()

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Activity,
   Ambulance,
+  Cpu,
   ClipboardList,
   LogOut,
   MapPinned,
@@ -41,6 +42,7 @@ const navigation: NavGroup[] = [
       { to: '/', label: 'Operations overview', icon: Activity, end: true },
       { to: '/incidents', label: 'Incident queue', icon: ClipboardList },
       { to: '/patients', label: 'Patients', icon: Users },
+      { to: '/devices', label: 'Devices', icon: Cpu },
       { to: '/services', label: 'Emergency services', icon: Ambulance },
       { to: '/map', label: 'Emergency map', icon: MapPinned },
     ],
@@ -75,7 +77,8 @@ function useClock() {
 /* ------------------------------------------------------------------ */
 
 export function AppShell() {
-  const { username, logout } = useAuth()
+  const { username, user, logout } = useAuth()
+  const canManageProvisioning = user?.role === 'emergency_coordinator' || user?.role === 'superuser'
   const now = useClock()
 
   return (
@@ -95,7 +98,7 @@ export function AppShell() {
           {navigation.map((group) => (
             <div className="app-nav__group" key={group.title}>
               <p className="app-sidebar__section">{group.title}</p>
-              {group.items.map(({ to, label, icon: Icon, end }) => (
+              {group.items.filter(({ to }) => to !== '/devices' || canManageProvisioning).map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
                   to={to}

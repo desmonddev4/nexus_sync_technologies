@@ -16,6 +16,8 @@ Status reviewed: 2026-10-18
 - [x] Add clinician/superuser measurement-quality queue and one-way review API, audit records, rule evaluation on acceptance, and dashboard review workflow.
 - [x] Add an authenticated device simulator for heartbeat, measurement, location, and idempotent SOS events, with local retry queue support.
 - [x] Allow active simulator/wearable device credentials to create idempotent SOS incidents with patient and source derived by the backend.
+- [x] Add controlled patient enrollment, account/role provisioning, coordinator-only device registry and credential lifecycle, and coordinator-managed provider/facility verification with recorded sources.
+- [x] Add safe simulated vehicle registration, defaulting vehicles to unavailable and keeping live fleet-feed authorization as a separate approval gate.
 
 ## Specification Roadmap: Remaining Pilot Deliverables
 
@@ -94,6 +96,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Fleet view: vehicle availability, source, freshness timestamp, and simulation marker.
 - [x] Audit log viewer with filters for actor, action, resource, date, and outcome.
 - [x] Account/role administration that replaces any dependency on Django admin for routine operations.
+- [x] Add dashboard workflows for patient creation, device assignment/status and credential issue/revocation, and pending emergency-directory records with audited source-based verification.
 - [x] Settings for escalation policy and authorized operational configuration.
 
 ### Dashboard Structure and Quality
@@ -112,6 +115,7 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [x] Add `/api/v1/auth/me/` for custom dashboard identity and operations-access checks.
 - [x] Replace monitoring-rule management through Django admin with role-protected APIs used by the custom dashboard; evaluated rule versions are immutable.
 - [x] Add a controlled API for measurement-quality review and expose it in the dashboard; enforce clinician/superuser permissions and audit one-way decisions.
+- [x] Add role-protected patient, device-registry, and emergency-directory provisioning APIs; require explicit verification sources and prevent directory verification from granting fleet-feed authorization.
 - [x] Expand audit coverage to authentication failures, user/role changes, rule changes, device credential issuance/revocation, route requests, exports, and administrative actions.
 - [x] Add audit-log retention, export, access-control, and backup policy.
 - [x] Add handling/recovery for notifications left in `processing`, plus operational monitoring for `submission_unknown` outcomes.

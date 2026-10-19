@@ -129,6 +129,27 @@ export interface DeviceHealth {
   updated_at: string
 }
 
+export interface DeviceRegistryRecord {
+  id: string
+  device_identifier: string
+  patient: string | null
+  device_type: string
+  status: string
+  firmware_version: string
+  battery_percent: number | null
+  last_seen_at: string | null
+  credential_revoked: boolean
+  credential_last_used_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IssuedDeviceCredential {
+  device: DeviceRegistryRecord
+  secret: string
+  warning: string
+}
+
 export interface MonitoringRule {
   id: string
   name: string
@@ -240,6 +261,12 @@ export interface EmergencyProvider {
   coverage_description: string
   verification_status: string
   verified_at: string | null
+  email?: string
+  operating_hours?: Record<string, unknown>
+  verification_source?: string
+  verified_by?: string
+  api_integration_authorized?: boolean
+  fleet_feed_authorized?: boolean
 }
 
 export interface HealthcareFacility {
@@ -251,6 +278,10 @@ export interface HealthcareFacility {
   latitude: string
   longitude: string
   verification_status: string
+  verification_source?: string
+  verified_by?: string
+  verified_at?: string | null
+  is_active?: boolean
 }
 
 export interface NearbyVehicle {
@@ -275,4 +306,44 @@ export interface MeasurementQualityReview extends Measurement {
   patient_name: string
   quality_reviewed_by: number | null
   quality_reviewed_at: string | null
+}
+
+export interface ProviderDirectoryRecord extends EmergencyProvider {
+  general_phone_number: string
+  email: string
+  operating_hours: Record<string, unknown>
+  verification_source: string
+  verified_by: string
+  api_integration_authorized: boolean
+  fleet_feed_authorized: boolean
+  integration_authorization_reference: string
+  integration_authorized_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FacilityDirectoryRecord extends HealthcareFacility {
+  is_active: boolean
+  verification_source: string
+  verified_by: string
+  verified_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface VehicleDirectoryRecord {
+  id: string
+  provider: string
+  provider_name: string
+  vehicle_identifier: string
+  capabilities: string[]
+  availability: string
+  data_source: string
+  latitude: string | null
+  longitude: string | null
+  location_accuracy_meters: number | null
+  location_updated_at: string | null
+  current_incident: string | null
+  created_at: string
+  updated_at: string
 }

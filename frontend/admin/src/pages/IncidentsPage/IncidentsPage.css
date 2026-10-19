@@ -1,29 +1,31 @@
-.incidents-page { display: grid; gap: 16px; }
-.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
-.page-eyebrow { margin: 0 0 8px; color: var(--muted); font: 500 9px var(--mono); letter-spacing: .08em; }
-.page-heading h1 { margin: 0; color: var(--ink); font: 600 28px var(--display); }
-.page-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-.incidents-count { padding: 7px 9px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 4px; font: 10px var(--mono); white-space: nowrap; }
-.incident-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 5px; }
-.incident-search { display: flex; min-width: 200px; align-items: center; gap: 8px; color: var(--muted); }
-.incident-search input { width: 100%; min-height: 34px; color: var(--ink); border: 0; outline: none; font-size: 12px; }
-.incident-filter { display: flex; gap: 3px; padding: 3px; background: var(--canvas); border-radius: 4px; }
-.incident-filter button { padding: 7px 11px; color: var(--muted); background: transparent; border: 0; border-radius: 3px; font-size: 10px; }
-.incident-filter button.is-active { color: var(--ink); background: #fff; box-shadow: 0 1px 3px #132a2115; font-weight: 600; }
-.incident-table-wrap { background: #fff; border: 1px solid var(--line); border-radius: 5px; }
-.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-.data-table th { padding: 10px; color: var(--muted); border-bottom: 1px solid var(--line); font: 500 9px var(--mono); text-transform: uppercase; white-space: nowrap; }
-.data-table td { padding: 11px 10px; color: var(--ink); border-bottom: 1px solid #edf0ed; font-size: 11px; vertical-align: middle; }
-.data-table tr:last-child td { border-bottom: 0; }
-.data-table td small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
-.incident-link { color: var(--ink); font-weight: 600; text-decoration: none; text-transform: capitalize; }
-.incident-link:hover { color: var(--green); }
-.row-open { display: inline-grid; width: 28px; height: 28px; place-items: center; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; }
-.page-error { padding: 12px; color: #8e352b; background: var(--coral-soft); border-radius: 4px; font-size: 12px; }
-.loading-row { padding: 18px; color: var(--muted); font-size: 12px; }
+/* ==========================================================================
+   IncidentsPage.css — page-specific rules (shared styles live in ui.css)
+   ========================================================================== */
+
+.incidents-page .is-spinning { animation: ui-spin 0.9s linear infinite; }
+
+.incidents-page .ui-toolbar .ui-search { flex: 1 1 260px; }
+
+/* New (unacknowledged) incidents get a red edge */
+.incidents-page .inc-row--new td:first-child { box-shadow: inset 3px 0 0 #ff6b7d; }
+
+.incidents-page .inc-coords { font-size: 12px; }
+
+.incidents-page .inc-unassigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--u-muted);
+}
+
+.incidents-page .inc-empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding-bottom: 22px;
+}
+
 @media (max-width: 720px) {
-	.incident-controls { align-items: stretch; flex-direction: column; }
-	.incident-search { min-height: 34px; }
-	.incident-filter { width: 100%; }
-	.incident-filter button { flex: 1; }
+  .incidents-page .ui-toolbar { flex-direction: column; }
+  .incidents-page .ui-toolbar .ui-search { flex: none; width: 100%; }
 }

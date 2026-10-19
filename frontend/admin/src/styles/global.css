@@ -1,41 +1,59 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
+@import './ui.css';
 
 :root {
   font-family: 'DM Sans', sans-serif;
   color: #172321;
-  background: #f1f3ef;
+  background: #eef1fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --ink: #172321;
-  --muted: #687470;
-  --line: #dfe5df;
+  accent-color: #2457f5;
+
+  /* Original tokens — kept so existing styles keep working */
+  --ink: #0e1433;
+  --muted: #667099;
+  --line: #dfe5ef;
   --paper: #fff;
-  --canvas: #f1f3ef;
-  --forest: #13312d;
-  --forest-soft: #21443e;
-  --green: #177b68;
-  --mint: #e0f1ea;
+  --canvas: #eef1fb;
+  --forest: #0a0f33;
+  --forest-soft: #141b4d;
+  --green: #2457f5;
+  --mint: #e6edff;
   --amber: #a86412;
   --amber-soft: #fbefd8;
   --coral: #bd493b;
   --coral-soft: #f9e5e1;
-  --blue: #396a89;
-  --blue-soft: #e1edf4;
+  --blue: #2f7bff;
+  --blue-soft: #e1ecff;
   --mono: 'DM Mono', monospace;
   --display: 'Space Grotesk', sans-serif;
+
+  /* NST brand (from the logo) */
+  --brand-cyan: #3fd8ff;
+  --brand-blue: #2457f5;
+  --brand-violet: #8a44f0;
+  --brand-gradient: linear-gradient(120deg, #3fd8ff, #2457f5 55%, #8a44f0);
 }
 
 * { box-sizing: border-box; }
 
-html { min-width: 320px; min-height: 100%; }
+html { min-width: 320px; min-height: 100%; scroll-behavior: smooth; }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
 }
+
+::selection { color: #fff; background: rgba(36, 87, 245, 0.85); }
+
+/* Slim, brand-tinted scrollbars */
+* { scrollbar-width: thin; scrollbar-color: rgba(36, 87, 245, 0.3) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: rgba(36, 87, 245, 0.28); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(36, 87, 245, 0.5); background-clip: padding-box; }
 
 .table-wrap {
   overflow-x: auto;
@@ -50,6 +68,8 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 a { color: inherit; }
+
+:focus-visible { outline-color: #2457f5; }
 
 @media (max-width: 760px) {
   .page-heading {

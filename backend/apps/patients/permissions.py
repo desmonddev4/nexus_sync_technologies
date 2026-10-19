@@ -25,7 +25,9 @@ class CanAccessPatientRecords(BasePermission):
         profile = self._profile(user)
         if profile is None:
             return False
-        return profile.role in self.staff_roles or profile.role == AccountProfile.Role.PATIENT
+        if request.method in SAFE_METHODS:
+            return profile.role in self.staff_roles or profile.role == AccountProfile.Role.PATIENT
+        return profile.role in self.staff_roles
 
     def has_object_permission(self, request, view, obj):
         user = request.user

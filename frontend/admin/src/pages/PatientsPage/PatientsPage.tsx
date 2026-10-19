@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, CalendarDays, ChevronDown, LayoutGrid, List, Phone, Search, UserRound, X } from 'lucide-react'
+import type { FormEvent } from 'react'
+import { ArrowUpRight, CalendarDays, ChevronDown, LayoutGrid, List, Phone, Search, UserPlus, UserRound, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getPatients } from '../../api/operations'
+import { createPatient, getPatients } from '../../api/operations'
 import type { Patient } from '../../types/api'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { StatusBadge } from '../../components/StatusBadge/StatusBadge'
@@ -99,11 +100,36 @@ export function PatientsPage() {
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showEnrollment, setShowEnrollment] = useState(false)
+  const [savingPatient, setSavingPatient] = useState(false)
+  const [newPatient, setNewPatient] = useState({ full_name: '', date_of_birth: '', phone_number: '', relevant_medical_notes: '' })
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getPatients().then(setPatients).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false))
   }, [])
+
+  async function submitNewPatient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSavingPatient(true)
+    setError('')
+    try {
+      const created = await createPatient({
+        full_name: newPatient.full_name.trim(),
+        phone_number: newPatient.phone_number.trim(),
+        date_of_birth: newPatient.date_of_birth || null,
+        relevant_medical_notes: newPatient.relevant_medical_notes.trim(),
+        status: 'active',
+      })
+      setPatients((current) => [created, ...current])
+      setNewPatient({ full_name: '', date_of_birth: '', phone_number: '', relevant_medical_notes: '' })
+      setShowEnrollment(false)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to create patient record.')
+    } finally {
+      setSavingPatient(false)
+    }
+  }
 
   // Press "/" anywhere on the page to jump to search.
   useEffect(() => {
@@ -162,8 +188,24 @@ export function PatientsPage() {
           <h1>Patient directory</h1>
           <p>Access is limited to records permitted by your role.</p>
         </div>
-        <span className="patients-count"><strong>{patients.length}</strong> records</span>
+        <div className="pt-head__actions">
+          <span className="patients-count"><strong>{patients.length}</strong> records</span>
+          <button type="button" className="pt-enroll-button" onClick={() => setShowEnrollment((value) => !value)} aria-expanded={showEnrollment}>
+            <UserPlus size={16} /> {showEnrollment ? 'Close form' : 'Enroll patient'}
+          </button>
+        </div>
       </header>
+
+      {showEnrollment && (
+        <form className="pt-enrollment" onSubmit={submitNewPatient}>
+          <div><p className="page-eyebrow">STAFF WORKFLOW</p><h2>New patient record</h2><p>Create the patient record first; then link a patient account and assign devices from their respective administration pages.</p></div>
+          <label>Full name<input required maxLength={200} value={newPatient.full_name} onChange={(event) => setNewPatient({ ...newPatient, full_name: event.target.value })} /></label>
+          <label>Phone number<input type="tel" value={newPatient.phone_number} onChange={(event) => setNewPatient({ ...newPatient, phone_number: event.target.value })} /></label>
+          <label>Date of birth<input type="date" value={newPatient.date_of_birth} onChange={(event) => setNewPatient({ ...newPatient, date_of_birth: event.target.value })} /></label>
+          <label className="pt-enrollment__notes">Relevant medical notes<textarea rows={3} value={newPatient.relevant_medical_notes} onChange={(event) => setNewPatient({ ...newPatient, relevant_medical_notes: event.target.value })} /></label>
+          <div className="pt-enrollment__footer"><span>Only enter information required for the intended care workflow.</span><button type="submit" disabled={savingPatient}>{savingPatient ? 'Saving…' : 'Create patient record'}</button></div>
+        </form>
+      )}
 
       {/* ---------- Search ---------- */}
       <div className="patient-search">
