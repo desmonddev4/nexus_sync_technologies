@@ -48,7 +48,7 @@ ALLOWED_TRANSITIONS = {
 
 
 @transaction.atomic
-def create_sos_incident(*, patient, event_id, trigger_source, actor):
+def create_sos_incident(*, patient, event_id, trigger_source, actor, location=None):
     incident, created = Incident.objects.get_or_create(
         patient=patient,
         source_event_id=event_id,
@@ -59,7 +59,20 @@ def create_sos_incident(*, patient, event_id, trigger_source, actor):
         },
     )
     if created:
-        snapshot_latest_patient_location(incident=incident, patient=patient)
+        if location:
+            recorded_at = location["recorded_at"]
+            age_seconds = (timezone.now() - recorded_at).total_seconds()
+            quality = PatientLocation.Quality.STALE if age_seconds > 300 else PatientLocation.Quality.VALID
+            accuracy = location.get("accuracy_meters")
+            if accuracy is None or accuracy > 100:
+                quality = PatientLocation.Quality.LOW_ACCURACY if age_seconds <= 300 else PatientLocation.Quality.STALE
+            IncidentLocationSnapshot.objects.create(
+                incident=incident, latitude=location["latitude"], longitude=location["longitude"],
+                accuracy_meters=accuracy, source=PatientLocation.Source.PHONE, quality=quality,
+                recorded_at=recorded_at, received_at=timezone.now(),
+            )
+        else:
+            snapshot_latest_patient_location(incident=incident, patient=patient)
         IncidentEvent.objects.create(
             incident=incident,
             event_type=IncidentEvent.Type.CREATED,

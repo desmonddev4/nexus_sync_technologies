@@ -143,3 +143,18 @@ class AccountDetailView(generics.RetrieveUpdateAPIView):
                 "is_active": user.is_active,
             },
         )
+class RevokeAuthTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.auth
+        if isinstance(token, Token):
+            token.delete()
+        record_audit_event(
+            request=request,
+            action="auth.token.revoked",
+            resource_type="auth",
+            resource_id=request.user.pk,
+            actor=request.user,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)

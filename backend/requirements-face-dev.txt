@@ -1,0 +1,5 @@
+# Optional local development only. InsightFace public model weights are
+# non-commercial research only; see backend/apps/accounts/FACE_LOGIN_DEV.md.
+insightface>=2.1,<3.0
+onnxruntime>=1.17,<2.0
+numpy>=2.3,<3.0

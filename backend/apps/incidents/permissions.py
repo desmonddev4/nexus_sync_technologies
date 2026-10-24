@@ -2,6 +2,8 @@ from rest_framework.permissions import BasePermission
 
 from apps.accounts.models import AccountProfile
 from apps.devices.models import Device
+from apps.patients.access import has_patient_access
+from apps.patients.models import PatientAccessGrant
 
 
 class CanAccessIncidents(BasePermission):
@@ -26,7 +28,7 @@ class CanAccessIncidents(BasePermission):
             return True
         profile = self._profile(user)
         return profile is not None and (
-            profile.role in self.staff_roles or profile.role == AccountProfile.Role.PATIENT
+            profile.role in self.staff_roles or profile.role in {AccountProfile.Role.PATIENT, AccountProfile.Role.EMERGENCY_CONTACT}
         )
 
     def has_object_permission(self, request, view, obj):
@@ -38,8 +40,8 @@ class CanAccessIncidents(BasePermission):
             return False
         if view.action in {
             "acknowledge",
-            "notifications",
-            "events",
+
+
             "assign_responder",
             "record_dispatch_request",
             "record_dispatch_confirmation",
@@ -47,4 +49,8 @@ class CanAccessIncidents(BasePermission):
             "route",
         }:
             return profile.role in self.staff_roles
-        return profile.role in self.staff_roles or profile.patient_id == obj.patient_id
+        if profile.role in self.staff_roles:
+            return True
+        if profile.role == AccountProfile.Role.PATIENT:
+            return profile.patient_id == obj.patient_id
+        return profile.role == AccountProfile.Role.EMERGENCY_CONTACT and has_patient_access(user, obj.patient, "incidents")

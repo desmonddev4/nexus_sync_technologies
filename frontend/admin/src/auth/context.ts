@@ -7,7 +7,8 @@ export interface AuthContextValue {
   username: string | null
   user: CurrentUser | null
   isChecking: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (username: string, password: string, faceCapture?: { frames: Blob[]; challenge: string }) => Promise<void>
+  loginAndEnrollFace: (username: string, password: string, faceCapture: { frames: Blob[]; challenge: string }) => Promise<void>
   logout: () => void
 }
 

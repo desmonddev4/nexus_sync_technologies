@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from apps.accounts.views import AuditedObtainAuthToken, CurrentUserView
+from apps.accounts.views import AuditedObtainAuthToken, CurrentUserView, RevokeAuthTokenView
 from apps.incidents.views import IncidentViewSet
 from apps.notifications.webhooks import SasuSyncWebhookView
 from apps.patients.views import PatientDataRequestViewSet, PatientViewSet
@@ -18,6 +18,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/token/", AuditedObtainAuthToken.as_view(), name="api-token-auth"),
     path("api/v1/auth/me/", CurrentUserView.as_view(), name="api-current-user"),
+    path("api/v1/auth/token/revoke/", RevokeAuthTokenView.as_view(), name="api-token-revoke"),
     path("api/v1/integrations/sasusync/webhook/", SasuSyncWebhookView.as_view(), name="sasusync-webhook"),
     path("api/v1/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.core.urls")),

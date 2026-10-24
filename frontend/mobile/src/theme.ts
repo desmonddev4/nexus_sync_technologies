@@ -1,0 +1,21 @@
+export const theme = {
+  colors: {
+    ink: '#0B1029',
+    inkRaised: '#121B3D',
+    inkCard: 'rgba(255,255,255,0.075)',
+    inkCardStrong: 'rgba(255,255,255,0.12)',
+    line: 'rgba(255,255,255,0.12)',
+    white: '#F7FAFF',
+    muted: '#A4B0D0',
+    dim: '#7380A6',
+    cyan: '#3FD8FF',
+    blue: '#2457F5',
+    violet: '#8A44F0',
+    mint: '#53E1B6',
+    amber: '#FFCA78',
+    coral: '#FF6F83',
+    red: '#FF536D',
+    redDeep: '#D92853',
+  },
+  radius: { card: 24, panel: 18, pill: 999 },
+} as const

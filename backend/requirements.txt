@@ -6,3 +6,5 @@ python-dotenv>=1.1,<2.0
 requests>=2.32,<3.0
 gunicorn>=23.0,<24.0
 whitenoise>=6.9,<7.0
+cryptography>=44,<51
+Pillow>=11,<13

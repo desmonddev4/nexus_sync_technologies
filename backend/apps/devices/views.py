@@ -1,6 +1,8 @@
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -50,7 +52,11 @@ class DeviceRegistryViewSet(
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
     def perform_create(self, serializer):
-        device = serializer.save()
+        try:
+            with transaction.atomic():
+                device = serializer.save()
+        except IntegrityError as error:
+            raise ValidationError({"device_identifier": "A device with this identifier is already registered."}) from error
         record_audit_event(
             request=self.request,
             action="device.registered",

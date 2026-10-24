@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from apps.accounts.models import AccountProfile
 from apps.audit.services import record_audit_event
 from apps.devices.models import Device
+from apps.patients.access import has_patient_access
+from apps.patients.models import PatientAccessGrant
 from apps.emergency_services.models import AmbulanceVehicle
 from apps.emergency_services.routing import (
     GoogleRoutesProvider,
@@ -21,6 +23,7 @@ from apps.emergency_services.routing import (
 )
 from apps.monitoring.models import PatientLocation
 from apps.notifications.models import IncidentNotification
+from apps.notifications.services import transition_notification
 from apps.notifications.serializers import IncidentNotificationStatusSerializer
 
 from .models import Incident, IncidentEvent, IncidentLocationSnapshot, IncidentRoute
@@ -52,19 +55,18 @@ class IncidentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
         user = self.request.user
         if user.is_superuser:
             return Incident.objects.select_related("patient", "assigned_vehicle__provider")
-        try:
-            profile = user.profile
-        except AccountProfile.DoesNotExist:
+        profile = getattr(user, "profile", None)
+        if profile is None:
             return Incident.objects.none()
-        if profile.role in {
-            AccountProfile.Role.EMERGENCY_COORDINATOR,
-            AccountProfile.Role.CLINICIAN,
-        }:
+        if profile.role in {AccountProfile.Role.EMERGENCY_COORDINATOR, AccountProfile.Role.CLINICIAN}:
             return Incident.objects.select_related("patient", "assigned_vehicle__provider")
-        return Incident.objects.filter(patient_id=profile.patient_id).select_related(
-            "patient", "assigned_vehicle__provider"
-        )
-
+        if profile.role == AccountProfile.Role.PATIENT:
+            return Incident.objects.filter(patient_id=profile.patient_id).select_related("patient", "assigned_vehicle__provider")
+        if profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+            grants = PatientAccessGrant.objects.filter(user=user, revoked_at__isnull=True).select_related("patient")
+            patient_ids = [grant.patient_id for grant in grants if "incidents" in grant.scopes and has_patient_access(user, grant.patient, "incidents")]
+            return Incident.objects.filter(patient_id__in=patient_ids).select_related("patient", "assigned_vehicle__provider")
+        return Incident.objects.none()
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         record_audit_event(
@@ -104,6 +106,7 @@ class IncidentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
             event_id=serializer.validated_data["event_id"],
             trigger_source=serializer.validated_data["trigger_source"],
             actor=None if isinstance(request.auth, Device) else request.user,
+            location=serializer.validated_data.get("location"),
         )
         record_audit_event(
             request=request,
@@ -131,12 +134,30 @@ class IncidentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
     @action(detail=True, methods=("get",), url_path="notifications")
     def notifications(self, request, pk=None):
         incident = self.get_object()
-        notifications = IncidentNotification.objects.filter(incident=incident).select_related(
-            "emergency_contact"
-        )
+        notifications = IncidentNotification.objects.filter(incident=incident).select_related("emergency_contact")
+        profile = getattr(request.user, "profile", None)
+        if profile and profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+            notifications = notifications.filter(emergency_contact__phone_number=profile.phone_number)
         serializer = IncidentNotificationStatusSerializer(notifications, many=True)
         return Response(serializer.data)
-
+    @action(detail=True, methods=("post",), url_path=r"notifications/(?P<notification_id>[^/.]+)/acknowledge")
+    def acknowledge_notification(self, request, pk=None, notification_id=None):
+        incident = self.get_object()
+        profile = getattr(request.user, "profile", None)
+        if profile is None or profile.role != AccountProfile.Role.EMERGENCY_CONTACT or not profile.phone_number:
+            raise DRFPermissionDenied("Only the verified contact receiving this notification can acknowledge it.")
+        notification = IncidentNotification.objects.filter(
+            pk=notification_id, incident=incident,
+            emergency_contact__phone_number=profile.phone_number,
+        ).first()
+        if notification is None:
+            raise Http404
+        try:
+            notification = transition_notification(notification=notification, new_status=IncidentNotification.Status.ACKNOWLEDGED, actor=request.user)
+        except ValueError as error:
+            raise ValidationError({"status": str(error)}) from error
+        record_audit_event(request=request, action="incident.notification.acknowledged", resource_type="incident_notification", resource_id=notification.pk, metadata={"incident": str(incident.pk)})
+        return Response(IncidentNotificationStatusSerializer(notification).data)
     @action(detail=True, methods=("get",), url_path="events")
     def events(self, request, pk=None):
         incident = self.get_object()

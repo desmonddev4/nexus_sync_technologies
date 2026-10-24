@@ -183,3 +183,15 @@ The sections below track the specification's end-to-end milestone. Checked items
 - [ ] Access control, audit coverage, backups, restore, monitoring, and incident escalation are reviewed and demonstrated.
 - [ ] Participating provider operational procedure and contact information are verified.
 - [ ] Pilot results separate simulated measurements from supervised real-world results; no efficacy claim without evaluation evidence.
+
+## Local software work we can advance
+
+- [ ] Add PostgreSQL concurrency acceptance coverage for duplicate device registration and competing vehicle assignment (coverage added; PostgreSQL execution pending).
+- [x] Build the patient/caretaker React Native app with live backend sign-in, scoped patient records, and optional device biometric unlock.
+- [x] Add patient-controlled caretaker access grants with explicit scopes, phone verification matching, audit logging, and revocation.
+- [x] Add phone location to SOS and show real notification delivery/acknowledgement status in the mobile app (live SMS delivery still depends on provider configuration).
+- [ ] Add a repeatable production-like acceptance runbook and evidence template for the SOS lifecycle, simulator retry/revocation, notifications, and permissions.
+- [ ] Run production-like browser and backend acceptance against a configured deployment; record results and unresolved failures.
+- [ ] Define service targets and operational monitoring checks for API availability, ingestion, notification processing, callbacks, and stale locations.
+
+Provider authorization, provider record verification, clinical/legal review, sensor validation, live delivery tests, and supervised pilot sign-off require external participants and stay as separate gates.

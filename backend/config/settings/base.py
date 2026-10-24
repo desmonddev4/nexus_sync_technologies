@@ -153,3 +153,22 @@ GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 AUDIT_RETENTION_DAYS = int(os.getenv("AUDIT_RETENTION_DAYS", "365"))
 AUDIT_EXPORT_MAX_ROWS = int(os.getenv("AUDIT_EXPORT_MAX_ROWS", "2000"))
 PATIENT_DATA_REQUEST_RETENTION_DAYS = int(os.getenv("PATIENT_DATA_REQUEST_RETENTION_DAYS", "365"))
+# Face verification is research-only and fail-closed until a vetted implementation is configured.
+BIOMETRIC_RESEARCH_ENABLED = os.getenv('BIOMETRIC_RESEARCH_ENABLED', 'false').lower() == 'true'
+BIOMETRIC_VERIFIER_CLASS = os.getenv('BIOMETRIC_VERIFIER_CLASS', '')
+BIOMETRIC_RESEARCH_CONSENT_VERSION = os.getenv('BIOMETRIC_RESEARCH_CONSENT_VERSION', '')
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {'biometric_capture': '5/day'}
+BIOMETRIC_FACE_LOGIN_ENABLED = os.getenv('BIOMETRIC_FACE_LOGIN_ENABLED', 'false').lower() == 'true'
+BIOMETRIC_FACE_CONSENT_VERSION = os.getenv('BIOMETRIC_FACE_CONSENT_VERSION', '')
+BIOMETRIC_MODEL_NAME = os.getenv('BIOMETRIC_MODEL_NAME', 'buffalo_l')
+BIOMETRIC_MODEL_ROOT = os.getenv('BIOMETRIC_MODEL_ROOT', str(BASE_DIR / '.face-model-cache'))
+BIOMETRIC_MATCH_THRESHOLD = float(os.getenv('BIOMETRIC_MATCH_THRESHOLD', '0.45'))
+BIOMETRIC_FACE_LIVENESS_ENABLED = os.getenv('BIOMETRIC_FACE_LIVENESS_ENABLED', 'false').lower() == 'true'
+BIOMETRIC_LIVENESS_THRESHOLD = float(os.getenv('BIOMETRIC_LIVENESS_THRESHOLD', '0.8'))
+BIOMETRIC_MOTION_TEST_ENABLED = os.getenv('BIOMETRIC_MOTION_TEST_ENABLED', 'false').lower() == 'true'
+BIOMETRIC_MOTION_CONSENT_VERSION = os.getenv('BIOMETRIC_MOTION_CONSENT_VERSION', '')
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update({
+    'biometric_face_login': '5/minute',
+    'biometric_liveness_challenge': '10/minute',
+    'biometric_motion_test': '5/day',
+})

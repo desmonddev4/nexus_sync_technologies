@@ -1,0 +1,21 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api, type CurrentUser, type Device, type Incident, type Measurement, type Patient } from '../api/client'
+
+type AppState = { token: string|null; user: CurrentUser|null; patients: Patient[]; patient: Patient|null; accessScopes: string[]; measurements: Measurement[]; devices: Device[]; incidents: Incident[]; loading: boolean; error: string|null; refresh: () => Promise<void>; selectPatient: (id:string) => Promise<void>; signIn: (username:string,password:string) => Promise<void>; signOut: () => Promise<boolean> }
+const Context = createContext<AppState|null>(null)
+export function RoleProvider({children}:{children:ReactNode}) {
+ const [token,setToken]=useState<string|null>(null); const [user,setUser]=useState<CurrentUser|null>(null); const [patients,setPatients]=useState<Patient[]>([]); const [patient,setPatient]=useState<Patient|null>(null); const [accessScopes,setAccessScopes]=useState<string[]>([]); const [measurements,setMeasurements]=useState<Measurement[]>([]); const [devices,setDevices]=useState<Device[]>([]); const [incidents,setIncidents]=useState<Incident[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState<string|null>(null)
+ const clear=useCallback(()=>{setUser(null);setPatients([]);setPatient(null);setAccessScopes([]);setMeasurements([]);setDevices([]);setIncidents([])},[])
+ const loadForPatient=useCallback(async(authToken:string,record:Patient,role:string|null)=>{setPatient(record);const scopes=role==='patient'?['patient','health','devices','location','incidents','sos']:(record.access_scopes??['patient']);setAccessScopes(scopes);const [r,d,i]=await Promise.all([scopes.includes('health')?api.measurements(authToken,record.id):Promise.resolve([]),scopes.includes('devices')?api.devices(authToken,record.id):Promise.resolve([]),scopes.includes('incidents')?api.incidents(authToken):Promise.resolve([])]);setMeasurements(r);setDevices(d);setIncidents(i)},[])
+ const load=useCallback(async(authToken:string)=>{setLoading(true);setError(null);try{const current=await api.me(authToken);setUser(current);if(current.role!=='patient'&&current.role!=='emergency_contact'){clear();throw new Error('This account does not have patient or caretaker access.')}const records=await api.patients(authToken);if(!records.length){clear();throw new Error(current.role==='emergency_contact'?'No patient has shared access with this caretaker account. Ask the patient to invite your verified contact account.':'No patient record is linked to this account. Ask your care team to link one.')}setPatients(records);await loadForPatient(authToken,records[0],current.role)}catch(e){setError(e instanceof Error?e.message:'Could not load account data.')}finally{setLoading(false)}},[clear,loadForPatient])
+ useEffect(()=>{let active=true;void api.token().then(saved=>{if(!active)return;setToken(saved);if(saved)void load(saved);else setLoading(false)});return()=>{active=false}},[load])
+ const signIn=useCallback(async(username:string,password:string)=>{setLoading(true);try{const saved=await api.signIn(username,password);setToken(saved);await load(saved)}finally{setLoading(false)}},[load])
+ const selectPatient=useCallback(async(id:string)=>{if(!token||!user)return;const record=patients.find(p=>p.id===id);if(!record)return;setLoading(true);setError(null);try{await loadForPatient(token,record,user.role)}catch(e){setError(e instanceof Error?e.message:'Could not load this patient record.')}finally{setLoading(false)}},[token,user,patients,loadForPatient])
+ const refresh=useCallback(async()=>{if(token)await load(token)},[load,token])
+ const signOut=useCallback(async()=>{const revoked=await api.signOut(token??undefined);setToken(null);clear();setError(null);return revoked},[clear,token])
+ const value=useMemo(()=>({token,user,patients,patient,accessScopes,measurements,devices,incidents,loading,error,refresh,selectPatient,signIn,signOut}),[token,user,patients,patient,accessScopes,measurements,devices,incidents,loading,error,refresh,selectPatient,signIn,signOut]);return <Context.Provider value={value}>{children}</Context.Provider>
+}
+export function useAppState(){const value=useContext(Context);if(!value)throw new Error('useAppState must be inside RoleProvider');return value}
+
+
+

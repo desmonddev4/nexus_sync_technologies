@@ -28,13 +28,14 @@ frontend/
 			components/         # Reusable UI components, each in its own directory
 			pages/              # Dashboard pages, each in its own directory
 			types/              # Shared frontend API/data contracts
+	mobile/             # Expo React Native patient/caretaker app
 ```
 
 Each backend domain is a separate Django app. Backend models, serializers, services, API views, and tests belong with the domain that owns them; shared behavior belongs in `apps/core` only when it is genuinely cross-domain.
 
 The active operator interface is a custom React + TypeScript web dashboard in `frontend/admin`. Keep each page and reusable component in its own file/directory with page-local or component-local CSS.
 
-React Native remains a separate later phase for patient/responder mobile clients after web dashboard workflows and API contracts stabilize.
+The Expo React Native client at `frontend/mobile` now signs in against the backend and loads live patient records. Patient accounts can see their own authorized data; caretaker record access awaits a backend authorization relationship.
 
 ## Frontend admin setup
 ```bash
@@ -46,6 +47,18 @@ npm run dev
 Set `VITE_API_BASE_URL` if your API is not served from `/api/v1`.
 
 Run frontend unit tests with `npm run test:run` and local browser acceptance tests with `npm run test:e2e`. The Playwright suite starts the Vite app and uses controlled API fixtures; it does not replace deployment acceptance testing.
+
+## Patient and caretaker mobile app
+
+The Expo app at `frontend/mobile` connects to the backend for patient sign-in, linked patient records, measurements, devices, emergency contacts, consent records, incident history, and manual SOS creation. It contains no sample patient data. Patients can grant verified emergency-contact accounts scoped access and revoke it at any time. Caretaker profiles redact sensitive patient fields and enforce each granted scope.
+
+```bash
+cd frontend/mobile
+npm install
+npx expo start
+```
+
+After password sign-in, patients and caretakers can enable Face ID or strong device biometrics to unlock the saved session token locally. Face data never leaves the device. A native development or production build is required to exercise biometric-protected storage; Expo Go does not support it.
 
 ## Backend setup
 

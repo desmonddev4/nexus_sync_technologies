@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Nexus Sync",
+    "slug": "nexus-sync-mobile",
+    "scheme": "nexussync",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "plugins": [
+      ["expo-router", { "root": "./src/app" }],
+      ["expo-location", { "locationWhenInUsePermission": "Nexus Sync uses your location only when you send an SOS alert." }],
+      ["expo-camera", { "cameraPermission": "Nexus Sync uses the front camera only when you choose a voluntary research capture or motion-check test.", "recordAudioAndroid": false }],
+      ["expo-secure-store", { "faceIDPermission": "Allow Nexus Sync to use Face ID to unlock your account." }],
+      ["expo-local-authentication", { "faceIDPermission": "Allow Nexus Sync to verify your identity." }]
+    ],
+    "experiments": { "typedRoutes": true },
+    "android": { "package": "com.nexussync.mobile" },
+    "ios": { "bundleIdentifier": "com.nexussync.mobile" }
+  }
+}

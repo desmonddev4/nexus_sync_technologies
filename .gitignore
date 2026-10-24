@@ -1,4 +1,4 @@
-.env
+﻿.env
 .venv/
 __pycache__/
 *.py[cod]
@@ -16,3 +16,20 @@ backend/staticfiles/
 simulator/.device-event-queue.jsonl
 firmware/esp32/include/device_config.h
 .DS_Store
+frontend/mobile/.expo/
+frontend/mobile/.env.local
+
+# Research face data: never commit participant photos or re-identification keys
+research/face_verification/dataset/images/
+research/face_verification/dataset/metadata/identity-key.csv
+research/face_verification/dataset/aligned/
+
+# Research model checkpoints are local artifacts and must not be committed.
+research/face_verification/checkpoints/
+*.face-research.pt
+backend/.face-model-cache/
+
+# Local HTTPS setup for phone camera testing
+frontend/admin/.local-dev-certs/
+frontend/admin/.vite.phone.config.mjs
+backend/.local-face-calibration/

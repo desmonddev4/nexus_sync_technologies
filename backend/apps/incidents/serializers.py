@@ -6,14 +6,30 @@ from rest_framework import serializers
 from apps.accounts.models import AccountProfile
 from apps.devices.models import Device
 from apps.monitoring.models import PatientLocation
+from apps.patients.access import has_patient_access
 from apps.patients.models import Patient
 
 from .models import Incident, IncidentEvent, IncidentLocationSnapshot
 
 
+class SOSLocationSerializer(serializers.Serializer):
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6)
+    accuracy_meters = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=0, required=False, allow_null=True)
+    recorded_at = serializers.DateTimeField(required=False)
+
+    def validate(self, attrs):
+        recorded_at = attrs.get("recorded_at", timezone.now())
+        age = (timezone.now() - recorded_at).total_seconds()
+        if age < -300 or age > 900:
+            raise serializers.ValidationError("Location must be current (no more than 15 minutes old).")
+        attrs["recorded_at"] = recorded_at
+        return attrs
+
 class SOSCreateSerializer(serializers.Serializer):
     patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all(), required=False)
     event_id = serializers.UUIDField()
+    location = SOSLocationSerializer(required=False)
     trigger_source = serializers.ChoiceField(
         choices=(Incident.Source.MANUAL, Incident.Source.WEARABLE, Incident.Source.SIMULATOR),
     )
@@ -53,6 +69,12 @@ class SOSCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Patients can only raise their own SOS.")
         if patient_user and attrs["trigger_source"] != Incident.Source.MANUAL:
             raise serializers.ValidationError("Patient SOS must use the manual source.")
+        if profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+            if not has_patient_access(user, attrs["patient"], "sos"):
+                raise serializers.ValidationError("This caretaker is not authorized to raise SOS for this patient.")
+            if attrs["trigger_source"] != Incident.Source.MANUAL:
+                raise serializers.ValidationError("Caretaker SOS must use the manual source.")
+            return attrs
         if not patient_user and profile.role not in staff_roles:
             raise serializers.ValidationError("This account cannot raise incidents.")
         return attrs
@@ -102,6 +124,10 @@ class IncidentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_location(self, obj):
+        request = self.context.get("request")
+        profile = getattr(getattr(request, "user", None), "profile", None) if request else None
+        if profile and profile.role == AccountProfile.Role.EMERGENCY_CONTACT and not has_patient_access(request.user, obj.patient, "location"):
+            return None
         try:
             snapshot = obj.location_snapshot
         except IncidentLocationSnapshot.DoesNotExist:

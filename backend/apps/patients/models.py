@@ -97,6 +97,31 @@ class ConsentRecord(UUIDTimestampedModel):
         return f"{self.patient_id}: {self.scope} {self.status}"
 
 
+
+class PatientAccessGrant(UUIDTimestampedModel):
+    class Scope(models.TextChoices):
+        PATIENT = "patient", "Basic patient profile"
+        HEALTH = "health", "Measurements and health readings"
+        DEVICES = "devices", "Connected devices"
+        LOCATION = "location", "Patient locations"
+        INCIDENTS = "incidents", "Incident history and notification status"
+        SOS = "sos", "Raise SOS incidents"
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="access_grants")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="patient_access_grants")
+    scopes = models.JSONField(default=list)
+    granted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="granted_patient_access")
+    granted_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("user__username",)
+        constraints = [models.UniqueConstraint(fields=("patient", "user"), name="uniq_patient_user_access_grant")]
+        indexes = [models.Index(fields=("user", "revoked_at"))]
+
+    def __str__(self):
+        return f"{self.user_id} access to {self.patient_id}"
+
 class PatientDataRequest(UUIDTimestampedModel):
     class RequestType(models.TextChoices):
         ACCESS_EXPORT = "access_export", "Access export"

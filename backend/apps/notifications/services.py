@@ -19,14 +19,15 @@ ALLOWED_TRANSITIONS = {
     IncidentNotification.Status.SUBMITTED: {
         IncidentNotification.Status.DELIVERED,
         IncidentNotification.Status.FAILED,
+        IncidentNotification.Status.ACKNOWLEDGED,
     },
     IncidentNotification.Status.SUBMISSION_UNKNOWN: {
         IncidentNotification.Status.SUBMITTED,
         IncidentNotification.Status.DELIVERED,
         IncidentNotification.Status.FAILED,
+        IncidentNotification.Status.ACKNOWLEDGED,
         IncidentNotification.Status.QUEUED,
     },
-    IncidentNotification.Status.FAILED: {IncidentNotification.Status.QUEUED},
     IncidentNotification.Status.DELIVERED: {
         IncidentNotification.Status.ACKNOWLEDGED,
     },

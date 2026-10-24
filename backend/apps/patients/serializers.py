@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from .models import ConsentRecord, EmergencyContact, Patient, PatientDataRequest
+from apps.accounts.models import AccountProfile
+from .access import has_patient_access
+from .models import ConsentRecord, EmergencyContact, Patient, PatientAccessGrant, PatientDataRequest
 
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
@@ -38,23 +40,39 @@ class ConsentRecordSerializer(serializers.ModelSerializer):
 class PatientSerializer(serializers.ModelSerializer):
     emergency_contacts = EmergencyContactSerializer(many=True, read_only=True)
     consent_records = ConsentRecordSerializer(many=True, read_only=True)
+    access_scopes = serializers.SerializerMethodField()
+
+    def get_access_scopes(self, instance):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return []
+        if user.is_superuser:
+            return list(PatientAccessGrant.Scope.values)
+        profile = getattr(user, "profile", None)
+        if profile and profile.role == AccountProfile.Role.PATIENT and profile.patient_id == instance.pk:
+            return list(PatientAccessGrant.Scope.values)
+        if not has_patient_access(user, instance, "patient"):
+            return []
+        grant = PatientAccessGrant.objects.filter(patient=instance, user=user, revoked_at__isnull=True).first()
+        return grant.scopes if grant else []
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        profile = getattr(getattr(request, "user", None), "profile", None) if request else None
+        if profile and profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+            for field in ("date_of_birth", "phone_number", "relevant_medical_notes", "emergency_contacts", "consent_records"):
+                data.pop(field, None)
+        return data
 
     class Meta:
         model = Patient
         fields = (
-            "id",
-            "full_name",
-            "date_of_birth",
-            "phone_number",
-            "relevant_medical_notes",
-            "status",
-            "emergency_contacts",
-            "consent_records",
-            "created_at",
-            "updated_at",
+            "id", "full_name", "date_of_birth", "phone_number", "relevant_medical_notes",
+            "status", "emergency_contacts", "consent_records", "access_scopes", "created_at", "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
-
+        read_only_fields = ("id", "created_at", "updated_at", "access_scopes")
 
 class PatientDataRequestSerializer(serializers.ModelSerializer):
     patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all(), required=False)

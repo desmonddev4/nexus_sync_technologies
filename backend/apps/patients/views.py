@@ -1,5 +1,7 @@
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework.decorators import action
 from rest_framework import mixins, viewsets
@@ -14,9 +16,10 @@ from apps.devices.serializers import DeviceHealthSerializer
 from apps.monitoring.models import Measurement, PatientLocation
 from apps.monitoring.serializers import MeasurementSerializer, PatientLocationSerializer
 
-from .models import Patient
-from .models import PatientDataRequest
+from .models import Patient, PatientAccessGrant, EmergencyContact
+from .models import ConsentRecord, PatientDataRequest
 from .permissions import CanAccessPatientRecords, CanManagePatientDataRequests
+from .access import has_patient_access
 from .serializers import PatientDataRequestSerializer, PatientSerializer
 from .services import (
     approve_patient_data_request,
@@ -65,6 +68,10 @@ class PatientViewSet(
             return Patient.objects.all()
         if profile.role == AccountProfile.Role.PATIENT and profile.patient_id:
             return Patient.objects.filter(pk=profile.patient_id)
+        if profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+            grants = PatientAccessGrant.objects.filter(user=user, revoked_at__isnull=True).select_related("patient")
+            patient_ids = [grant.patient_id for grant in grants if "patient" in grant.scopes and has_patient_access(user, grant.patient, "patient")]
+            return Patient.objects.filter(pk__in=patient_ids)
         return Patient.objects.none()
 
     def list(self, request, *args, **kwargs):
@@ -118,6 +125,41 @@ class PatientViewSet(
             resource_id=patient.pk,
         )
 
+    @action(detail=True, methods=("get", "post"), url_path="caretakers")
+    def caretakers(self, request, pk=None):
+        patient = self.get_object()
+        if request.method == "GET":
+            if request.user.profile.role == AccountProfile.Role.EMERGENCY_CONTACT:
+                raise DRFPermissionDenied("Caretaker accounts cannot view other access grants.")
+            grants = PatientAccessGrant.objects.filter(patient=patient, revoked_at__isnull=True).select_related("user").order_by("user__username")
+            return Response([{"id": str(g.pk), "username": g.user.get_username(), "scopes": g.scopes, "granted_at": g.granted_at} for g in grants])
+        username = str(request.data.get("username", "")).strip()[:150]
+        scopes = request.data.get("scopes", [])
+        allowed = set(PatientAccessGrant.Scope.values)
+        if not username or not isinstance(scopes, list) or any(not isinstance(scope, str) for scope in scopes) or "patient" not in scopes or not set(scopes) <= allowed:
+            raise ValidationError({"detail": "Provide a caretaker username and one or more valid access scopes, including the patient profile."})
+        caretaker = get_user_model().objects.select_related("profile").filter(username=username, is_active=True).first()
+        if caretaker is None or caretaker == request.user:
+            raise ValidationError({"username": "No eligible caretaker account was found."})
+        profile = getattr(caretaker, "profile", None)
+        if profile is None or profile.role != AccountProfile.Role.EMERGENCY_CONTACT or not profile.phone_number:
+            raise ValidationError({"username": "The account must be a provisioned emergency contact with a verified phone number."})
+        verified_contact = EmergencyContact.objects.filter(patient=patient, phone_number=profile.phone_number, verification_status=EmergencyContact.VerificationStatus.VERIFIED).exists()
+        if not verified_contact:
+            raise ValidationError({"username": "This account phone does not match a verified emergency contact for this patient."})
+        grant, created = PatientAccessGrant.objects.update_or_create(patient=patient, user=caretaker, defaults={"scopes": list(dict.fromkeys(scopes)), "granted_by": request.user, "revoked_at": None})
+        record_audit_event(request=request, action="patient.access_granted", resource_type="patient_access_grant", resource_id=grant.pk, metadata={"patient": str(patient.pk), "scopes": grant.scopes})
+        return Response({"id": str(grant.pk), "username": caretaker.get_username(), "scopes": grant.scopes, "granted_at": grant.granted_at}, status=201 if created else 200)
+    @action(detail=True, methods=("delete",), url_path=r"caretakers/(?P<grant_id>[^/.]+)")
+    def revoke_caretaker(self, request, pk=None, grant_id=None):
+        patient = self.get_object()
+        grant = PatientAccessGrant.objects.filter(pk=grant_id, patient=patient, revoked_at__isnull=True).first()
+        if grant is None:
+            raise Http404
+        grant.revoked_at = timezone.now()
+        grant.save(update_fields=("revoked_at", "updated_at"))
+        record_audit_event(request=request, action="patient.access_revoked", resource_type="patient_access_grant", resource_id=grant.pk, metadata={"patient": str(patient.pk)})
+        return Response(status=204)
     @action(detail=True, methods=["get"], url_path="measurements")
     def measurements(self, request, pk=None):
         patient = self.get_object()

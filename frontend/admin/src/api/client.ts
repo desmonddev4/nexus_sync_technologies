@@ -106,6 +106,21 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return payload as T
 }
 
+export async function apiMultipartRequest<T>(path: string, body: FormData): Promise<T> {
+  const headers = new Headers()
+  const token = getAuthToken()
+  if (token) headers.set('Authorization', `Token ${token}`)
+  const response = await fetch(`${API_BASE_URL}/${path.replace(/^\//, '')}`, {
+    method: 'POST',
+    headers,
+    body,
+  })
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const payload: unknown = response.status === 204 ? undefined : isJson ? await response.json() : await response.text()
+  if (!response.ok) throw new ApiError(extractErrorMessage(payload), response.status)
+  return payload as T
+}
+
 export async function triggerDeviceSos(deviceIdentifier: string, secret: string, patientId: string) {
   const eventId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const response = await fetch(`${API_BASE_URL}/incidents/sos/`, {

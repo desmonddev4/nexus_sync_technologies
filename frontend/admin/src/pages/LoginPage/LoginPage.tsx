@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FocusEvent, FormEvent, KeyboardEvent, PointerEvent } from 'react'
-import { AlertCircle, Eye, EyeOff, Lock, Radio, ShieldCheck, User, Zap } from 'lucide-react'
+import { AlertCircle, Camera, Eye, EyeOff, Lock, Radio, ShieldCheck, User, Zap } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
+import { apiRequest } from '../../api/client'
 import nstLogo from '../../assets/NST LOGO.png'
 import './LoginPage.css'
 
@@ -29,6 +30,7 @@ const FEATURES = [
   { icon: Zap, label: 'Faster dispatch decisions' },
   { icon: ShieldCheck, label: 'Audited, role-based access' },
 ]
+const FACE_TEST_UI_ENABLED = import.meta.env.VITE_BIOMETRIC_FACE_LOGIN_ENABLED === 'true'
 
 function validateField(field: FieldName, value: string): string {
   if (field === 'username') {
@@ -46,7 +48,7 @@ function validateField(field: FieldName, value: string): string {
 /* ------------------------------------------------------------------ */
 
 export function LoginPage() {
-  const { login, token, user, isChecking } = useAuth()
+  const { login, loginAndEnrollFace, token, user, isChecking } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -60,9 +62,17 @@ export function LoginPage() {
   const [capsLock, setCapsLock] = useState(false)
   const [shaking, setShaking] = useState(false)
   const [ripple, setRipple] = useState<Ripple | null>(null)
+  const [faceMode, setFaceMode] = useState<'password' | 'face' | 'enroll'>('password')
+  const [faceConsent, setFaceConsent] = useState(false)
+  const [faceFrames, setFaceFrames] = useState<Blob[]>([])
+  const [faceChallenge, setFaceChallenge] = useState<{ challenge: string; steps: ('center' | 'left' | 'right')[] } | null>(null)
+  const [cameraError, setCameraError] = useState('')
+  const [formNotice, setFormNotice] = useState('')
 
   const usernameRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const cameraStream = useRef<MediaStream | null>(null)
 
   const redirectTo = (location.state as RedirectState | null)?.from?.pathname || '/'
 
@@ -72,6 +82,30 @@ export function LoginPage() {
       navigate(redirectTo, { replace: true })
     }
   }, [token, user, navigate, redirectTo])
+
+  useEffect(() => {
+    if (faceMode === 'password') return
+    let active = true
+    setCameraError('')
+    setFaceFrames([])
+    setFaceChallenge(null)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('This browser does not support camera capture.')
+      return () => { active = false }
+    }
+    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+      .then((stream) => {
+        if (!active) { stream.getTracks().forEach((track) => track.stop()); return }
+        cameraStream.current = stream
+        if (videoRef.current) videoRef.current.srcObject = stream
+      })
+      .catch(() => setCameraError('Camera access was unavailable. Allow camera permission and try again.'))
+    return () => {
+      active = false
+      cameraStream.current?.getTracks().forEach((track) => track.stop())
+      cameraStream.current = null
+    }
+  }, [faceMode])
 
   /* ---------------------------- handlers ---------------------------- */
 
@@ -131,16 +165,68 @@ export function LoginPage() {
       return
     }
 
+    if (faceMode !== 'password' && (!faceChallenge || faceFrames.length !== 3)) {
+      setFormError('Complete all three face prompts before continuing.')
+      setShaking(true)
+      return
+    }
+    if (faceMode === 'enroll' && !faceConsent) {
+      setFormError('Consent is required to enroll a development face template.')
+      setShaking(true)
+      return
+    }
+
     setSubmitting(true)
     try {
-      await login(username.trim(), password)
-      navigate(redirectTo, { replace: true })
+      if (faceMode === 'enroll' && faceChallenge) {
+        await loginAndEnrollFace(username.trim(), password, { frames: faceFrames, challenge: faceChallenge.challenge })
+        setFormNotice('Development face enrollment saved. Sign in with your username, password, and face capture to test it.')
+        setFaceMode('password')
+        setFaceConsent(false)
+      } else {
+        await login(username.trim(), password, faceMode === 'face' && faceChallenge ? { frames: faceFrames, challenge: faceChallenge.challenge } : undefined)
+        navigate(redirectTo, { replace: true })
+      }
     } catch (reason) {
       setFormError(reason instanceof Error ? reason.message : 'Sign-in failed. Check your credentials.')
       setShaking(true)
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function captureFace() {
+    setCameraError('')
+    if (!faceChallenge) {
+      try {
+        const challenge = await apiRequest<{ challenge: string; steps: ('center' | 'left' | 'right')[] }>('auth/face-liveness-challenge/')
+        setFaceChallenge(challenge)
+        setFaceFrames([])
+      } catch (reason) {
+        setCameraError(reason instanceof Error ? reason.message : 'Could not start the liveness challenge.')
+      }
+      return
+    }
+    if (faceFrames.length >= faceChallenge.steps.length) {
+      setFaceChallenge(null)
+      setFaceFrames([])
+      setCameraError('Challenge cleared. Start again to capture a new sequence.')
+      return
+    }
+    const video = videoRef.current
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError('Camera is starting. Try capture again in a moment.')
+      return
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const context = canvas.getContext('2d')
+    if (!context) { setCameraError('Could not capture an image from the camera.'); return }
+    context.drawImage(video, 0, 0)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+    if (!blob) { setCameraError('Could not capture an image from the camera.'); return }
+    setFaceFrames((frames) => [...frames, blob])
   }
 
   /* ----------------------------- render ----------------------------- */
@@ -207,7 +293,7 @@ export function LoginPage() {
       </section>
 
       {/* Form panel */}
-      <section className="login-form-panel">
+      <section className={`login-form-panel${faceMode !== 'password' ? ' login-form-panel--face' : ''}`}>
         <div className="login-card" onPointerMove={handleCardPointerMove}>
           <form
             className={`login-form${shaking ? ' is-shaking' : ''}`}
@@ -226,6 +312,33 @@ export function LoginPage() {
                 <p className="login-description">Use your authorized Nexus Sync account.</p>
               </div>
             </header>
+
+            {FACE_TEST_UI_ENABLED && <div className="login-face-modes" aria-label="Sign-in method">
+              <button type="button" className={faceMode === 'password' ? 'is-selected' : ''} onClick={() => { setFaceMode('password'); setFormNotice('') }}>Password</button>
+              <button type="button" className={faceMode === 'face' ? 'is-selected' : ''} onClick={() => { setFaceMode('face'); setFormNotice('') }}>Face test</button>
+              <button type="button" className={faceMode === 'enroll' ? 'is-selected' : ''} onClick={() => { setFaceMode('enroll'); setFormNotice('') }}>Enroll test face</button>
+            </div>}
+
+            {FACE_TEST_UI_ENABLED && faceMode !== 'password' && (
+              <section className="login-face-panel" aria-label="Development face verification">
+                <p>Development test only. Your password is still required. Follow the randomized head-turn prompts; this motion check is not production-validated.</p>
+                <video ref={videoRef} autoPlay muted playsInline aria-label="Camera preview" />
+                <button type="button" className="login-face-capture" onClick={captureFace} disabled={submitting}>
+                  <Camera size={16} /> {!faceChallenge ? 'Start face-motion check' : faceFrames.length >= 3 ? 'Restart challenge' : `Capture ${faceChallenge.steps[faceFrames.length] ?? ''}`}
+                </button>
+                {faceChallenge && faceFrames.length < 3 && <span className="login-face-captured">{faceChallenge.steps[faceFrames.length] === 'center' ? 'Face the camera and capture.' : `Turn your head so your nose moves toward the ${faceChallenge.steps[faceFrames.length]} side of the preview, then capture.`}</span>}
+                {faceFrames.length === 3 && <span className="login-face-captured">Challenge frames ready</span>}
+                {cameraError && <p className="login-field-error" role="alert">{cameraError}</p>}
+                {faceMode === 'enroll' && (
+                  <label className="login-face-consent">
+                    <input type="checkbox" checked={faceConsent} onChange={(event) => setFaceConsent(event.target.checked)} />
+                    I consent to storing an encrypted face template for local development sign-in testing. I can remove it by deleting the enrollment.
+                  </label>
+                )}
+              </section>
+            )}
+
+            {formNotice && <p className="login-face-notice" role="status">{formNotice}</p>}
 
             <div className={`login-field${usernameInvalid ? ' is-invalid' : ''}`}>
               <label htmlFor="username">Username</label>
@@ -329,7 +442,7 @@ export function LoginPage() {
                   onAnimationEnd={() => setRipple(null)}
                 />
               )}
-              <span className="login-submit-label">{submitting ? 'Verifying…' : 'Sign in'}</span>
+              <span className="login-submit-label">{submitting ? 'Verifying…' : faceMode === 'face' ? 'Verify face & sign in' : faceMode === 'enroll' ? 'Enroll development face' : 'Sign in'}</span>
               <span className="login-submit-spinner" aria-hidden="true" />
             </button>
 
